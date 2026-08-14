@@ -59,21 +59,41 @@ class RenderSmokeTest {
 
 	private static final Double[] SECOND_VALUES = { 3.0, 4.0, 2.0 };
 
+	/** The chart bounds handed to the generator, in points. */
+	private static final int CHART_WIDTH_POINTS = 600;
+
+	private static final int CHART_HEIGHT_POINTS = 400;
+
+	/**
+	 * What {@link CapturingPngRenderer#EXPORT_DPI} makes of those bounds: BIRT
+	 * measures a chart in points (1/72 inch) and scales the device bounds by
+	 * <code>dpi / 72</code> on the way to the device.
+	 */
+	private static final int EXPORT_SCALE = CapturingPngRenderer.EXPORT_DPI / 72;
+
 	@Test
 	void everyStepModeRendersToPng() throws Exception {
-		renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES, new Options()), "step-after.png");
-		renderPng(ChartFixtures.stepLineChart(StepMode.BEFORE_LITERAL, VALUES, new Options()), "step-before.png");
-		renderPng(ChartFixtures.stepLineChart(StepMode.CENTER_LITERAL, VALUES, new Options()), "step-center.png");
+		renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES, titled("Step line · After")),
+				"step-after.png");
+		renderPng(ChartFixtures.stepLineChart(StepMode.BEFORE_LITERAL, VALUES, titled("Step line · Before")),
+				"step-before.png");
+		renderPng(ChartFixtures.stepLineChart(StepMode.CENTER_LITERAL, VALUES, titled("Step line · Center")),
+				"step-center.png");
 	}
 
 	@Test
 	void everyStepModeRendersTransposedToPng() throws Exception {
-		Options transposed = new Options().transposed(true);
-		renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES, transposed),
+		renderPng(
+				ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES,
+						titled("Step line · After (transposed)").transposed(true)),
 				"step-after-transposed.png");
-		renderPng(ChartFixtures.stepLineChart(StepMode.BEFORE_LITERAL, VALUES, transposed),
+		renderPng(
+				ChartFixtures.stepLineChart(StepMode.BEFORE_LITERAL, VALUES,
+						titled("Step line · Before (transposed)").transposed(true)),
 				"step-before-transposed.png");
-		renderPng(ChartFixtures.stepLineChart(StepMode.CENTER_LITERAL, VALUES, transposed),
+		renderPng(
+				ChartFixtures.stepLineChart(StepMode.CENTER_LITERAL, VALUES,
+						titled("Step line · Center (transposed)").transposed(true)),
 				"step-center-transposed.png");
 	}
 
@@ -81,21 +101,21 @@ class RenderSmokeTest {
 	void missingValuesRenderToPng() throws Exception {
 		Double[] values = { 5.0, null, 3.0 };
 		renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, values,
-				new Options().connectMissingValue(false)), "step-null-gap.png");
+				titled("Step line · null gap").connectMissingValue(false)), "step-null-gap.png");
 		renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, values,
-				new Options().connectMissingValue(true)), "step-null-connected.png");
+				titled("Step line · null bridged").connectMissingValue(true)), "step-null-connected.png");
 	}
 
 	@Test
 	void stackedSeriesRenderToPng() throws Exception {
 		renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES,
-				new Options().stacked(true).secondValues(SECOND_VALUES)), "step-stacked.png");
+				titled("Step line · stacked").stacked(true).secondValues(SECOND_VALUES)), "step-stacked.png");
 	}
 
 	@Test
 	void theRenderedPngKeepsItsTransparentBackground() throws Exception {
-		File png = renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES, new Options()),
-				"step-after.png");
+		File png = renderPng(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES,
+				titled("Step line · After")), "step-after.png");
 
 		BufferedImage image = ImageIO.read(png);
 
@@ -105,12 +125,17 @@ class RenderSmokeTest {
 		assertEquals(0, image.getRGB(2, 2) >>> 24,
 				"the chart background must be fully transparent so the image works on a dark page too");
 		assertTrue(drawnPixels(image) > 0, "the plot area is empty - nothing was drawn on the transparent ground");
+		assertEquals(CHART_WIDTH_POINTS * EXPORT_SCALE, image.getWidth(),
+				"the device must have honoured IDeviceRenderer.DPI_RESOLUTION and rendered at export resolution");
+		assertEquals(CHART_HEIGHT_POINTS * EXPORT_SCALE, image.getHeight(),
+				"the device must have honoured IDeviceRenderer.DPI_RESOLUTION and rendered at export resolution");
 	}
 
 	@Test
 	void aStepLineRendersToSvg() throws Exception {
-		File svg = render(ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES, new Options()), "dv.SVG",
-				"step-after.svg");
+		File svg = render(
+				ChartFixtures.stepLineChart(StepMode.AFTER_LITERAL, VALUES, titled("Step line · After")),
+				"dv.SVG", "step-after.svg");
 
 		String document = Files.readString(svg.toPath(), StandardCharsets.UTF_8);
 		assertTrue(document.contains("<path"), "BIRT's SVG device draws lines as <path> elements");
@@ -118,6 +143,14 @@ class RenderSmokeTest {
 
 	private static File renderPng(ChartWithAxes chart, String fileName) throws Exception {
 		return render(chart, "dv.PNG", fileName);
+	}
+
+	/**
+	 * @param caption the title the rendered chart carries
+	 * @return fresh options with that title
+	 */
+	private static Options titled(String caption) {
+		return new Options().title(caption);
 	}
 
 	/**
@@ -141,14 +174,14 @@ class RenderSmokeTest {
 		File out = new File(CapturingPngRenderer.outputDirectory(), fileName);
 
 		IDeviceRenderer device = ChartEngine.instance().getRenderer(deviceId);
-		device.setProperty(IDeviceRenderer.FILE_IDENTIFIER, out.getAbsolutePath());
+		CapturingPngRenderer.configureExport(device, out);
 
 		RunTimeContext rtc = new RunTimeContext();
 		rtc.setULocale(ULocale.ENGLISH);
 
 		Generator generator = Generator.instance();
 		GeneratedChartState state = generator.build(device.getDisplayServer(), chart,
-				BoundsImpl.create(0, 0, 600, 400), null, rtc, null);
+				BoundsImpl.create(0, 0, CHART_WIDTH_POINTS, CHART_HEIGHT_POINTS), null, rtc, null);
 		generator.render(device, state);
 
 		assertTrue(out.isFile(), fileName + " was not written");
