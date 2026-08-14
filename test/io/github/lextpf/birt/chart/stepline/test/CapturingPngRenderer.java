@@ -25,6 +25,7 @@ import org.eclipse.birt.chart.factory.GeneratedChartState;
 import org.eclipse.birt.chart.factory.Generator;
 import org.eclipse.birt.chart.factory.RunTimeContext;
 import org.eclipse.birt.chart.model.Chart;
+import org.eclipse.birt.chart.model.attribute.LineAttributes;
 import org.eclipse.birt.chart.model.attribute.impl.BoundsImpl;
 
 import com.ibm.icu.util.ULocale;
@@ -72,8 +73,66 @@ public class CapturingPngRenderer extends PngRendererImpl {
 	 */
 	private final List<Object> segmentSeries = new ArrayList<>();
 
-	/** The number of ovals drawn for an isolated series data point. */
+	/**
+	 * The number of ovals <em>stroked</em> for a series data point - which is the
+	 * number of isolated data points, the ones that have no neighbour to connect
+	 * to and are therefore drawn as a dot instead of a line.
+	 * <p>
+	 * The two are the same thing because of how BIRT emits the two kinds of oval a
+	 * series can produce. An isolated point comes out of
+	 * {@code Line.LineDataPointsRenderer2D.drawSinglePoint} as a bare
+	 * {@code drawOval} whose outline is the series' own line attributes - it is a
+	 * stroke and nothing else. A data point <em>marker</em> comes out of
+	 * {@code MarkerRenderer} as a {@code fillOval} plus a {@code drawOval} whose
+	 * outline is the marker's, and the fixtures switch that outline off, so the
+	 * marker is filled but never stroked. {@code G2dRendererBase.drawOval} agrees:
+	 * it returns without touching the canvas when the outline is invisible.
+	 * Counting only the ovals that really get a stroke therefore counts isolated
+	 * points and no markers, whatever shape the markers happen to be - a
+	 * distinction that did not matter while they were boxes, which are drawn as
+	 * polygons, and does now that they are circles.
+	 */
 	public int seriesPointOvals;
+
+	/**
+	 * The resolution every test render is exported at, in dots per inch - four
+	 * times the 72 dpi a chart model is measured in, three times the 96 dpi a
+	 * device falls back to.
+	 * <p>
+	 * BIRT lays a chart out in points and only scales on the way to the device:
+	 * {@code Generator.render} hands the device an {@code EXPECTED_BOUNDS} scaled
+	 * by {@code dpi / 72}, so the 600x400 pt chart becomes a 2400x1600 px image.
+	 * Text and markers follow that factor -
+	 * {@code G2dDisplayServerBase.createFont} multiplies the point size by it and
+	 * {@code MarkerRenderer} multiplies the marker size by it - so they are
+	 * re-rendered at the higher resolution rather than upsampled. Anti-aliasing is
+	 * on regardless: {@code G2dRendererBase.prepareGraphicsContext} sets both the
+	 * shape and the text hint.
+	 * <p>
+	 * Line thickness does <em>not</em> follow. {@code Generator.render} does walk
+	 * the model multiplying every {@code LineAttributes} by the integer scale, but
+	 * it does so on a copy it makes for itself, while the series renderers were
+	 * handed the original model back in {@code Generator.build} and read their
+	 * thickness from that - so every stroke stays as many device pixels wide as
+	 * the model says, however high the resolution goes.
+	 */
+	public static final int EXPORT_DPI = 288;
+
+	/**
+	 * Points the device at an output file and puts it into export resolution.
+	 * <p>
+	 * The order matters. {@code SwingDisplayServer.getDpiResolution} caches the
+	 * resolution the first time it is asked for and only consults the value passed
+	 * here while that cache is still empty, so the property has to be set before
+	 * anything - {@code Generator.build} above all - reads the display server.
+	 *
+	 * @param device the device to configure
+	 * @param out    the file the device writes to
+	 */
+	public static void configureExport(IDeviceRenderer device, File out) {
+		device.setProperty(IDeviceRenderer.FILE_IDENTIFIER, out.getAbsolutePath());
+		device.setProperty(IDeviceRenderer.DPI_RESOLUTION, Integer.valueOf(EXPORT_DPI));
+	}
 
 	@Override
 	public void drawLine(LineRenderEvent lre) throws ChartException {
@@ -87,10 +146,22 @@ public class CapturingPngRenderer extends PngRendererImpl {
 
 	@Override
 	public void drawOval(OvalRenderEvent ore) throws ChartException {
-		if (ore.getSource() instanceof StructureSource ss && ss.getType() == StructureType.SERIES_DATA_POINT) {
+		if (ore.getSource() instanceof StructureSource ss && ss.getType() == StructureType.SERIES_DATA_POINT
+				&& isStroked(ore)) {
 			seriesPointOvals++;
 		}
 		super.drawOval(ore);
+	}
+
+	/**
+	 * @param ore an oval the chart engine is about to draw
+	 * @return whether the device will actually put a stroke on the canvas for it -
+	 *         the same precondition {@code G2dRendererBase.drawOval} checks before
+	 *         it does any drawing at all
+	 */
+	private static boolean isStroked(OvalRenderEvent ore) {
+		LineAttributes outline = ore.getOutline();
+		return outline != null && outline.isVisible();
 	}
 
 	/**
@@ -132,7 +203,7 @@ public class CapturingPngRenderer extends PngRendererImpl {
 	 * @throws ChartException if the chart engine fails
 	 */
 	public static List<Seg> render(Chart chart, File pngOut, CapturingPngRenderer idr) throws ChartException {
-		idr.setProperty(IDeviceRenderer.FILE_IDENTIFIER, pngOut.getAbsolutePath());
+		configureExport(idr, pngOut);
 
 		RunTimeContext rtc = new RunTimeContext();
 		rtc.setULocale(ULocale.ENGLISH);
