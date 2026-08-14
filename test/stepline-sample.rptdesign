@@ -7,18 +7,9 @@
     </data-sources>
     <data-sets>
         <script-data-set name="Step Line Data Set" id="3">
-            <list-property name="resultSet">
-                <structure>
-                    <property name="position">1</property>
-                    <property name="name">category</property>
-                    <property name="dataType">string</property>
-                </structure>
-                <structure>
-                    <property name="position">2</property>
-                    <property name="name">value</property>
-                    <property name="dataType">float</property>
-                </structure>
-            </list-property>
+            <!-- The ROM knows no "resultSet" property on script-data-set (it lives on
+                 oda-data-set and joint-data-set only); "resultSetHints" is the column
+                 metadata a scripted data set declares. -->
             <list-property name="resultSetHints">
                 <structure>
                     <property name="position">1</property>
@@ -297,11 +288,14 @@ return false;]]></method>
       </Title>
       <TitlePosition>Above</TitlePosition>
     </Children>
+    <!-- The outermost block must carry the chart size: a block whose width and
+         height are both explicitly 0 makes the report item presentation bail out
+         before it ever renders (ChartReportItemPresentationBase.onRowSets). -->
     <Bounds>
       <Left>0.0</Left>
       <Top>0.0</Top>
-      <Width>0.0</Width>
-      <Height>0.0</Height>
+      <Width>400.0</Width>
+      <Height>250.0</Height>
     </Bounds>
     <Insets>
       <Top>3.0</Top>
