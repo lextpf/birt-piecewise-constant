@@ -12,6 +12,7 @@
   <name>BIRT Chart Piecewise Constant Series</name>
   <description>Piecewise constant (step line / staircase / zero-order hold) line series extension for the
     BIRT chart engine.</description>
+  <url>https://github.com/lextpf/birt-piecewise-constant</url>
 
   <licenses>
     <license>
@@ -21,6 +22,20 @@
       <comments>SPDX-License-Identifier: EPL-2.0</comments>
     </license>
   </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/lextpf/birt-piecewise-constant.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/lextpf/birt-piecewise-constant.git</developerConnection>
+    <url>https://github.com/lextpf/birt-piecewise-constant</url>
+  </scm>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/lextpf/birt-piecewise-constant</url>
+    </repository>
+  </distributionManagement>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
