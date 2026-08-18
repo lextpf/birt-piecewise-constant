@@ -5,12 +5,13 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.github.lextpf.birt</groupId>
-  <artifactId>io.github.lextpf.birt.chart.stepline</artifactId>
+  <artifactId>io.github.lextpf.birt.chart.piecewiseconstant</artifactId>
   <version>1.0.0</version>
   <packaging>jar</packaging>
 
-  <name>BIRT Chart Step Line Series</name>
-  <description>Piecewise-constant (staircase) line series extension for the BIRT chart engine.</description>
+  <name>BIRT Chart Piecewise Constant Series</name>
+  <description>Piecewise constant (step line / staircase / zero-order hold) line series extension for the
+    BIRT chart engine.</description>
 
   <licenses>
     <license>
@@ -251,7 +252,7 @@
           <useManifestOnlyJar>false</useManifestOnlyJar>
           <argLine>-Djava.awt.headless=true -Duser.language=en -Duser.country=US</argLine>
           <systemPropertyVariables>
-            <stepline.test.out>${project.build.directory}/test-output</stepline.test.out>
+            <piecewiseconstant.test.out>${project.build.directory}/test-output</piecewiseconstant.test.out>
           </systemPropertyVariables>
           <workingDirectory>${project.build.directory}</workingDirectory>
         </configuration>
