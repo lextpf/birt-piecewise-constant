@@ -2,56 +2,63 @@
 
 [![build](https://github.com/lextpf/birt-piecewise-constant/actions/workflows/build.yml/badge.svg)](https://github.com/lextpf/birt-piecewise-constant/actions/workflows/build.yml)
 
-`io.github.lextpf.birt.chart.piecewiseconstant` is an Eclipse BIRT chart engine extension that adds
-a **PiecewiseConstantSeries**: a line series drawn as a *piecewise constant* function - the value
-of each data point is held until the jump to the next one, so the curve is a run of horizontal
-treads and vertical risers instead of straight interpolated segments. The same series is also
-known as a **step line**, a **staircase** or a **zero-order-hold** series; those are synonyms for
-what this bundle calls piecewise constant. The jump is placed `After`, `Before` or at the `Center`
-of the interval.
+`io.github.lextpf.birt.chart.piecewiseconstant` is a plug-in for the Eclipse BIRT chart engine. It
+adds a **PiecewiseConstantSeries**. The renderer holds the value of each data point until the step
+to the next data point. The line is therefore a run of horizontal treads and vertical steps, and
+not a run of interpolated segments.
 
-The bundle plugs into the BIRT chart engine through the standard `modelrenderers`,
-`datasetprocessors` and `charttypes` extension points, targets **BIRT 4.24.0** and contains no UI
-code. `PiecewiseConstantSeries` is a subclass of BIRT's own `LineSeries`, so markers, data point
+Other names for this series type are step line, staircase, stepped line, zero-order hold and
+sample-and-hold. This document uses only the term "piecewise constant series". The renderer draws
+each step `After`, `Before` or at the `Center` of the interval.
+
+The plug-in connects to the chart engine through three standard extension points:
+`modelrenderers`, `datasetprocessors` and `charttypes`. It targets BIRT 4.24.0 and contains no UI
+code. `PiecewiseConstantSeries` is a subclass of BIRT's own `LineSeries`. Markers, data point
 labels, shadows, stacking, percent axes, transposed (horizontal) charts, 3D and the legend all
-keep working; only the path between the points changes.
+continue to work. Only the path between the data points changes.
 
-> **Scope:** the Designer's chart wizard is explicitly **out of scope**. There is no wizard page
-> for this series, so a piecewise constant chart cannot be *authored* through the Designer UI - it
-> is authored through the Java API or by editing the chart XML in the `.rptdesign` (see below).
-> Rendering was verified for the POJO runtime path only, by this module's test suite; with the jar
-> deployed, the Designer's preview and an OSGi runtime are *expected* to render it the same way,
-> through the standard extension points, but that has not been verified here.
+> **Scope:** the chart wizard of the Designer is out of scope. The plug-in adds no wizard page for
+> this series type. An author therefore cannot create a piecewise constant chart through the
+> Designer UI. An author must use the Java API, or must edit the chart XML in the `.rptdesign` file.
+> See [Using it](#using-it).
+>
+> The test suite of this module verifies the POJO runtime path only. The Designer preview and the
+> OSGi runtime resolve the series through the same extension points, so they can render it in the
+> same way. This module does not verify that.
 
 ## Step modes
 
-| Mode | XML literal | Where the line jumps | Shape between two points *p* and *q* | Also called |
+| Step mode | XML literal | Where the renderer draws the step | Shape between point *p* and point *q* | Mathematical name |
 | --- | --- | --- | --- | --- |
-| `StepMode.AFTER_LITERAL` | `After` | at the **next** point | hold *p*'s value up to *q*'s position, then jump | zero-order hold, sample-and-hold; the right-continuous (càdlàg) step function |
-| `StepMode.BEFORE_LITERAL` | `Before` | at the **current** point | jump to *q*'s value at *p*'s position, then hold | left-continuous step |
-| `StepMode.CENTER_LITERAL` | `Center` | **halfway** between them | hold, jump at the midpoint, hold - on a category axis the midpoint is the category boundary | midpoint step |
+| `StepMode.AFTER_LITERAL` | `After` | at the **next** data point | tread at the value of *p* up to the position of *q*, then step | right-continuous (càdlàg) step function |
+| `StepMode.BEFORE_LITERAL` | `Before` | at the **current** data point | step to the value of *q* at the position of *p*, then tread | left-continuous step function |
+| `StepMode.CENTER_LITERAL` | `Center` | **halfway** between the two data points | tread, step at the midpoint, tread | midpoint step function |
 
-`After` is the default: a series whose `StepMode` was never set behaves as `After` and writes no
-`<StepMode>` element.
+On a category axis the midpoint is the boundary between the two categories.
+
+`After` is the default step mode. A series that has no `StepMode` value behaves as `After`, and the
+chart serializer writes no `<StepMode>` element for it.
 
 ## Getting the jar
 
 ### (a) From the GitHub Releases page
 
-Every `v*` tag publishes a release with both artifacts attached. Download
+Every `v*` tag publishes a release. Each release carries both jars.
 
-```
-io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar
-```
+1. Open [the latest release](https://github.com/lextpf/birt-piecewise-constant/releases/latest).
+2. Download the plug-in jar:
 
-from [the latest release](https://github.com/lextpf/birt-piecewise-constant/releases/latest); the
-matching `…_1.0.0-sources.jar` is attached next to it. This is the file you drop into an engine -
-it carries `plugin.xml` and an OSGi `META-INF/MANIFEST.MF` at its root, which is what makes it a
-BIRT plug-in in both of BIRT's environments.
+   ```
+   io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar
+   ```
+
+The matching `…_1.0.0-sources.jar` is attached next to it. The plug-in jar is the file that you put
+into an engine. It carries `plugin.xml` and an OSGi `META-INF/MANIFEST.MF` at its root. These two
+files make it a BIRT plug-in in both environments of BIRT.
 
 ### (b) From GitHub Packages, for Maven users
 
-The same release publishes the artifact to GitHub Packages under
+The same release publishes the artifact to GitHub Packages under these coordinates:
 
 ```xml
 <dependency>
@@ -61,119 +68,140 @@ The same release publishes the artifact to GitHub Packages under
 </dependency>
 ```
 
-Add the repository to the consuming `pom.xml` (or to a profile in `settings.xml`):
+GitHub Packages always needs credentials. GitHub rejects an anonymous fetch with
+`401 Unauthorized`, also for a public package. You must therefore hold a personal access token
+(classic) with the **`read:packages`** scope before you start.
 
-```xml
-<repositories>
-  <repository>
-    <id>github</id>
-    <name>GitHub Packages</name>
-    <url>https://maven.pkg.github.com/lextpf/birt-piecewise-constant</url>
-  </repository>
-</repositories>
-```
+1. Add the repository to the `pom.xml` of the consuming project, or to a profile in `settings.xml`:
 
-> **GitHub Packages always needs credentials** - even for a public package, an anonymous fetch is
-> rejected with `401 Unauthorized`. Add a matching server entry to `~/.m2/settings.xml` with a
-> personal access token (classic) that has the **`read:packages`** scope:
->
-> ```xml
-> <servers>
->   <server>
->     <id>github</id>
->     <username>your-github-username</username>
->     <password>ghp_your_personal_access_token</password>
->   </server>
-> </servers>
-> ```
->
-> The `<id>` must match the `<repository>` id. If you would rather not deal with tokens, use the
-> release download (a) or build locally (c).
+   ```xml
+   <repositories>
+     <repository>
+       <id>github</id>
+       <name>GitHub Packages</name>
+       <url>https://maven.pkg.github.com/lextpf/birt-piecewise-constant</url>
+     </repository>
+   </repositories>
+   ```
+
+2. Add a matching server entry to `~/.m2/settings.xml`:
+
+   ```xml
+   <servers>
+     <server>
+       <id>github</id>
+       <username>your-github-username</username>
+       <password>ghp_your_personal_access_token</password>
+     </server>
+   </servers>
+   ```
+
+The `<id>` of the server must match the `<id>` of the repository. If you do not want to use a
+token, then download the release (a) or build the plug-in locally (c).
 
 ### (c) Build it locally
 
-```powershell
-.\setup.ps1
-.\build.ps1 clean install
-```
+Precondition: the machine runs Windows with PowerShell 7, and it holds a JDK 21 and an Apache Maven
+installation. See [Building from source](#building-from-source) for what the two scripts do.
 
-produces `build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` (plus the sources jar) and
-installs both into the local repository under `~/.m2/repository`, where a sibling project can
-depend on them with the coordinates above and no repository entry at all. See
-[Building from source](#building-from-source) for what the two scripts do.
+1. Write the toolchain configuration:
+
+   ```powershell
+   .\setup.ps1
+   ```
+
+2. Build the jars and install them:
+
+   ```powershell
+   .\build.ps1 clean install
+   ```
+
+The build produces `build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` and the sources
+jar. Note: it also installs both jars into the local repository under `~/.m2/repository`. A sibling
+project can then use the coordinates above with no repository entry at all.
 
 ## Integrating into a BIRT engine
 
-Deployment is always the same: put the jar somewhere the engine's class loader (POJO) or bundle
-loader (OSGi) looks, and the three extension points do the rest. No configuration file, no
-registration call.
+Deployment is always the same. Put the jar where the class loader of the POJO runtime finds it. For
+the OSGi runtime, put the jar where the plug-in loader finds it. The three extension points do the
+rest. The plug-in needs no configuration file and no registration call.
 
-| Engine flavour | Where the jar goes | How it is found |
+| Engine flavour | Where the jar goes | How the engine finds it |
 | --- | --- | --- |
-| **POJO report engine** - the `birt-runtime` distribution, `Platform.startup`, `ChartEngine.instance(new PlatformConfig())`, `ReportRunner`, or a servlet app with the engine on its classpath | `ReportEngine/lib/` - or any other classpath entry: a Maven dependency, an exploded `classes` directory, an extra `-cp` element | BIRT's POJO platform scans the class loader for `META-INF/MANIFEST.MF` entries and reads the `plugin.xml` next to each one |
-| **`birt.war` / BIRT Viewer** | `WEB-INF/lib/` | the same classpath scan, run over the webapp's class loader |
-| **OSGi report engine / any app that sets `BIRT_HOME`** | `<BIRT_HOME>/platform/plugins/` | Equinox resolves the bundle from its manifest and registers the three extensions in the extension registry |
-| **Eclipse BIRT Designer** | `<eclipse>/dropins/plugins/`, then restart with `-clean` | the same Equinox extension registry; renders and previews a report that already contains the series, but the chart wizard cannot author one |
+| **POJO runtime** - the `birt-runtime` distribution, `Platform.startup`, `ChartEngine.instance(new PlatformConfig())`, `ReportRunner`, or a servlet application with the engine on its classpath | `ReportEngine/lib/`, or any other classpath entry: a Maven dependency, an exploded `classes` directory, an extra `-cp` element | the POJO platform of BIRT scans the class loader for `META-INF/MANIFEST.MF` entries, and reads the `plugin.xml` next to each one |
+| **`birt.war` / BIRT Viewer** | `WEB-INF/lib/` | the same classpath scan, over the class loader of the web application |
+| **OSGi runtime, or any application that sets `BIRT_HOME`** | `<BIRT_HOME>/platform/plugins/` | Equinox resolves the plug-in from its manifest and registers the three extensions in the extension registry |
+| **Eclipse BIRT Designer** | `<eclipse>/dropins/plugins/`, then restart with `-clean` | the same Equinox extension registry; the Designer renders and previews a report that already contains the series, but the chart wizard cannot create one |
 
-For the POJO engine make sure `BIRT_HOME` is **not** set - it would make BIRT start Equinox
-instead, and then the jar needs to be in `platform/plugins` rather than on the classpath.
+For the POJO runtime you must not set `BIRT_HOME`. If `BIRT_HOME` is set, then BIRT starts Equinox.
+The jar must then be in `platform/plugins` and not on the classpath.
 
-Copying the jar into an unpacked distribution, for example:
+To copy the jar into an unpacked distribution, run a command of this form:
 
 ```powershell
 Copy-Item .\build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar `
           C:\birt-runtime-4.24.0\ReportEngine\lib\
 ```
 
-Only the POJO path is exercised by this module's test suite (`RuntimeSmokeIT` runs the sample
-report through a real, unpacked runtime). The OSGi and Designer rows resolve the series through the
-very same extension points and are *expected* to behave identically, but that was not verified
-here.
+Only the test suite of this module exercises the POJO path. `RuntimeSmokeIT` runs the sample report
+through a real, unpacked runtime. The OSGi runtime and the Designer resolve the series through the
+same extension points, so they can behave in the same way. This module does not verify that.
 
 ### Compatibility
 
-| | Requirement |
+| Item | Requirement |
 | --- | --- |
-| Java runtime | **21 or newer.** The classes are compiled with `release 21` (class file version 65) and the manifest declares `Bundle-RequiredExecutionEnvironment: JavaSE-21`. |
-| BIRT, under OSGi | **4.24 or newer** (below 5.0): the manifest's `Require-Bundle` pins `org.eclipse.birt.chart.engine;bundle-version="[4.24.0,5.0.0)"`, and Equinox refuses to resolve the bundle outside that range. |
-| BIRT, on a POJO classpath | there is no version check at all - the constraint is simply that the engine on the classpath is the one the jar was compiled against (4.24.0 as shipped). |
+| Java runtime | **21 or newer.** The build compiles the classes with `release 21` (class file version 65), and the manifest declares `Bundle-RequiredExecutionEnvironment: JavaSE-21`. |
+| BIRT, under the OSGi runtime | **4.24 or newer**, and below 5.0. The manifest pins `Require-Bundle: org.eclipse.birt.chart.engine;bundle-version="[4.24.0,5.0.0)"`, and Equinox refuses to resolve the plug-in outside that range. |
+| BIRT, on a POJO classpath | There is no version check. The classpath must carry the BIRT version that the build compiled the jar against (4.24.0 as shipped). |
 
-**Older BIRT / older Java.** The BIRT chart API this extension uses (`LineSeries`, the `Line`
-renderer, `DataPointHints`, the three extension points, the EMF model plumbing) is unchanged back
-to **BIRT 4.13**. What differs is the Java level BIRT itself declares: 4.13-4.19 are `JavaSE-11`, 4.21 and
-later are `JavaSE-21`. So a Java 11 build of this bundle for an older engine is a small, mechanical
-rebuild rather than a port:
+**Older BIRT and older Java.** The BIRT chart API that this plug-in uses is unchanged back to
+**BIRT 4.13**. That API is `LineSeries`, the `Line` renderer, `DataPointHints`, the three extension
+points and the EMF model plumbing. Only the Java level that BIRT declares differs: BIRT 4.13 to
+4.19 declare `JavaSE-11`, and BIRT 4.21 and later declare `JavaSE-21`. A Java 11 build of this
+plug-in for an older engine is therefore a small, mechanical rebuild and not a port.
 
-- lower `<release>` in `pom.xml` from 21 to 11,
-- replace the four Java 14+/16+ constructs in `src/`:
-  - the `record Expanded(…)` in `render/PiecewiseConstantLine.java`,
-  - the pattern-matching `instanceof` in `render/PiecewiseConstantExpander.java`
-    (`isNullValue`: `v instanceof Number n`),
-  - the pattern-matching `instanceof` in `render/PiecewiseConstantLine.java`
-    (`series instanceof PiecewiseConstantSeries step`),
-  - the arrow-`switch` over `StepMode` in `render/PiecewiseConstantExpander.java`,
-- widen `Require-Bundle` to `[4.13.0,5.0.0)` and set `Bundle-RequiredExecutionEnvironment: JavaSE-11`
-  in `META-INF/MANIFEST.MF`,
-- point `birt.version` at the BIRT release you are targeting and rebuild.
+Precondition: you hold the sources and a JDK 11.
 
-That is **possible on request / on a rebuild** - it is not what the published jar is. The released
-artifact is Java 21 and BIRT 4.24 only.
+1. Lower `<release>` in `pom.xml` from 21 to 11.
+2. Replace the `record Expanded(…)` in `render/PiecewiseConstantLine.java`.
+3. Replace the pattern-matching `instanceof` in `render/PiecewiseConstantExpander.java`
+   (`isNullValue`: `v instanceof Number n`).
+4. Replace the pattern-matching `instanceof` in `render/PiecewiseConstantLine.java`
+   (`series instanceof PiecewiseConstantSeries step`).
+5. Replace the arrow `switch` over `StepMode` in `render/PiecewiseConstantExpander.java`.
+6. Widen `Require-Bundle` to `[4.13.0,5.0.0)` in `META-INF/MANIFEST.MF`.
+7. Set `Bundle-RequiredExecutionEnvironment: JavaSE-11` in `META-INF/MANIFEST.MF`.
+8. Point `birt.version` in `pom.xml` at the BIRT release that you target.
+9. Rebuild the plug-in.
+
+Steps 2 to 5 replace the four Java 14 and Java 16 constructs in `src/`. Note: this rebuild is
+possible on request. It is not what the published jar is. The released jar is Java 21 and BIRT 4.24
+only.
 
 ### Troubleshooting
 
-- **The chart renders as a plain, straight-segment line.** The jar is not on the class loader the
-  engine scans. The engine log carries a line like
-  `SEVERE: (ECLIPSE-ENV) Could not find series renderer impl for io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl`
-  (`error.eclenv.cannot.find.series.renderer`; the standalone engine logs the same text with the
-  `(STANDALONE-ENV)` prefix instead).
-  Check that the jar really sits in `ReportEngine/lib` (or `WEB-INF/lib`, or `platform/plugins` for
-  OSGi), that it was not unpacked into a plain classes folder without its `plugin.xml`, and that
-  `BIRT_HOME` matches the flavour you meant to run.
-- **`UnsupportedClassVersionError … class file version 65.0`.** The engine is running on a JRE
-  older than 21. Either run it on a Java 21+ JRE, or rebuild for Java 11 as described above.
-- **The series loads, but as a plain `LineSeries`** - no steps, `StepMode` lost on the round trip.
-  The chart serializer was class-loaded before the platform came up; see
-  [Class-loading order](#class-loading-order).
+**The chart renders as a plain line with straight segments.** The jar is not on the class loader
+that the engine scans. The engine log carries a line like this one:
+
+```
+SEVERE: (ECLIPSE-ENV) Could not find series renderer impl for io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl
+```
+
+The message key is `error.eclenv.cannot.find.series.renderer`. The standalone chart engine logs the
+same text with the `(STANDALONE-ENV)` prefix.
+
+1. Check that the jar really sits in `ReportEngine/lib`, in `WEB-INF/lib`, or in
+   `platform/plugins` for the OSGi runtime.
+2. Check that nobody unpacked the jar into a plain classes folder without its `plugin.xml`.
+3. Check that `BIRT_HOME` matches the engine flavour that you want to run.
+
+**`UnsupportedClassVersionError … class file version 65.0`.** The engine runs on a JRE older than
+21. Run the engine on a Java 21 JRE or newer, or rebuild it for Java 11 as described above.
+
+**The series loads, but as a plain `LineSeries`.** The chart shows no steps, and the round trip
+loses the `StepMode`. The JVM loaded the chart serializer before the BIRT platform came up. See
+[Class-loading order](#class-loading-order).
 
 ## Using it
 
@@ -203,16 +231,20 @@ chart.getPrimaryOrthogonalAxis(chart.getPrimaryBaseAxes()[0]).getSeriesDefinitio
 valueDefinition.getSeries().add(series);
 ```
 
-`PiecewiseConstantSeriesImpl.create()` returns a series with BIRT's usual line-series defaults
-(one visible box marker, a line label, `connectMissingValue = true`) and an explicitly set
-`StepMode` of `After`; `PiecewiseConstantSeriesImpl.createDefault()` returns the "unset" variant
-BIRT uses to compute defaults with, which serializes without a `<StepMode>` element.
+The snippet adds the series to the value axis (BIRT: `getPrimaryOrthogonalAxis`) of the first
+category axis (BIRT: `getPrimaryBaseAxes`).
+
+`PiecewiseConstantSeriesImpl.create()` returns a series with the usual line series defaults of
+BIRT: one visible box marker, a line label and `connectMissingValue = true`. It also sets
+`StepMode` explicitly to `After`. `PiecewiseConstantSeriesImpl.createDefault()` returns the "unset"
+variant that BIRT computes its defaults with. That variant serializes without a `<StepMode>`
+element.
 
 ### In a `.rptdesign`
 
-A chart lives in the report as the `xmlRepresentation` CDATA of an `<extended-item
-extensionName="Chart">`. Inside that chart XML the root element declares our namespace and the
-value series carries the `xsi:type` and the mode:
+The report holds a chart as the `xmlRepresentation` CDATA of an `<extended-item
+extensionName="Chart">`. In that chart XML the root element declares the namespace of this plug-in.
+The value series carries the `xsi:type` and the step mode:
 
 ```xml
 <model:ChartWithAxes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -234,162 +266,198 @@ value series carries the `xsi:type` and the mode:
 </model:ChartWithAxes>
 ```
 
-`StepMode` is a child **element**, not an attribute, and its only legal values are `After`,
-`Before` and `Center`. A complete, runnable example is
-[`test/piecewise-constant-sample.rptdesign`](test/piecewise-constant-sample.rptdesign):
-a scripted five-row data set (`category`, `value`) with a chart item bound to it.
+`StepMode` is a child **element** and not an attribute. Its only legal values are `After`, `Before`
+and `Center`. [`test/piecewise-constant-sample.rptdesign`](test/piecewise-constant-sample.rptdesign)
+is a complete, runnable example. It holds a scripted five-row data set (`category`, `value`) and a
+chart item bound to that data set.
 
 ### `PiecewiseConstantSetup.registerStandalone()`
 
-There are three ways to run the chart engine, and only one of them needs setup code:
+There are three ways to run the chart engine. Only one of them needs setup code.
 
-| Environment | How the series is found | Setup needed |
+| Environment | How the chart engine finds the series | Setup needed |
 | --- | --- | --- |
-| OSGi (Designer, OSGi report engine) | Equinox extension registry | none |
+| OSGi runtime (Designer, OSGi report engine) | Equinox extension registry | none |
 | POJO runtime (`Platform.startup`, `ChartEngine.instance(new PlatformConfig())`, `ReportRunner`) | classpath scan for `plugin.xml` | none |
-| Standalone (`config.setProperty(PluginSettings.PROP_STANDALONE, "true")`) | hard-coded arrays inside `PluginSettings` | `PiecewiseConstantSetup.registerStandalone()` |
+| standalone chart engine (`config.setProperty(PluginSettings.PROP_STANDALONE, "true")`) | hard-coded arrays inside `PluginSettings` | `PiecewiseConstantSetup.registerStandalone()` |
 
-The standalone chart engine skips `Platform.startup` entirely and resolves renderers from a fixed
-list of the series types BIRT ships with, so it would report *"Could not find series renderer
-impl"* and draw nothing. `PiecewiseConstantSetup.registerStandalone()` appends the piecewise
-constant series to those lists and registers the EMF package. Call it once, after the
-`PluginSettings` singleton exists and before the first chart is built. It is idempotent and
-harmless in the other two environments.
+The standalone chart engine skips `Platform.startup` entirely. It resolves renderers from a fixed
+list of the series types that BIRT ships with. Without setup code it therefore logs the
+`error.stdenv.cannot.find.series.renderer` message and draws nothing. See
+[Troubleshooting](#troubleshooting) for the exact log line.
+`PiecewiseConstantSetup.registerStandalone()` appends the piecewise constant series to those lists
+and registers the EMF package.
+
+The caller must call the method one time. The call must come after the `PluginSettings` singleton
+exists. The call must come before the chart engine builds the first chart. Note: the method is
+idempotent, and it is harmless in the other two environments.
 
 ### Class-loading order
 
-The chart serializer caches the set of chart model packages in a **static initializer**. If
-`org.eclipse.birt.chart.model.impl.SerializerImpl` (or `ChartDynamicExtension`) is loaded *before*
-the platform is up, that cache is empty for the rest of the JVM's life and a piecewise constant
-series silently deserializes as a plain `LineSeries`. Start the platform - or call
-`PiecewiseConstantSetup.registerStandalone()` - before touching the serializer.
+The chart serializer caches the set of chart model packages in a **static initializer**. The JVM can
+load `org.eclipse.birt.chart.model.impl.SerializerImpl` (or `ChartDynamicExtension`) before the BIRT
+platform is up. That cache then stays empty for the rest of the life of the JVM. A piecewise
+constant series then deserializes silently as a plain `LineSeries`. You must start the platform
+(`Platform.startup`), or call `PiecewiseConstantSetup.registerStandalone()`, before you touch the
+serializer.
 
 ## Behaviour notes
 
-- **Category axes.** The steps run centre-to-centre: a category's data point sits in the middle of
-  its slot, so an `After`/`Before` step spans from one category centre to the next, and a `Center`
-  step turns exactly on the boundary between two categories.
-- **Missing values.** A `null` never carries a corner. With `connectMissingValue = true` (BIRT's
-  default) the staircase steps straight across the gap from the last real point to the next one;
-  with `false` the run breaks and BIRT draws the isolated points as markers, exactly as it does for
-  a stock line series.
-- **Equal neighbours.** Two equal values form one flat step and produce no corner, so a constant
-  series draws as a single straight line.
-- **`curve`.** Ignored. A piecewise constant line has no spline, so a series with `curve = true`
-  is still drawn as a staircase.
-- **Stacking and percent axes.** Each series is expanded after BIRT has stacked it, so every series
-  of a stacked group is its own staircase on top of the previous one.
-- **3D.** Best effort: the corners are inserted in the depth plane of the point they belong to and
-  the stock 3D line renderer draws the tape. It looks right, but the 3D case has far fewer degrees
-  of freedom than the 2D one and is not the intended use.
-- **Tooltips/hotspots** on line segments are a no-op in the Swing/PNG device - a pre-existing BIRT
-  limitation, not specific to this series. They work in the SVG device.
+- **Category axis (BIRT: base axis).** The steps run centre to centre. The data point of a category
+  sits in the middle of its slot. An `After` step or a `Before` step therefore spans from one
+  category centre to the next one. A `Center` step turns exactly on the boundary between two
+  categories.
+- **Missing values.** A missing value never carries a corner vertex. With
+  `connectMissingValue = true` (the default of BIRT) the line steps straight across the missing
+  value. The line runs from the last real data point to the next real one. With
+  `connectMissingValue = false` the run breaks. BIRT then draws the isolated data points as
+  markers, exactly as it does for a stock line series.
+- **Equal neighbours.** Two equal values form one tread and produce no corner vertex. A constant
+  series therefore draws as a single straight line.
+- **`curve`.** The renderer ignores `curve`. A piecewise constant line has no spline, so a series
+  with `curve = true` still draws as treads and steps.
+- **Stacking and percent axes.** The renderer expands each series after BIRT has stacked it. Every
+  series of a stacked group is therefore its own piecewise constant line on top of the previous
+  one.
+- **3D.** The renderer inserts each corner vertex in the depth plane of the data point that owns
+  it. The stock 3D line renderer then draws the tape. The test suite checks the 3D case only for
+  the absence of an exception: the 3D geometry test asserts that the render completes and that no
+  `ClassCastException` occurs. The test suite checks the 2D case vertex by vertex against a
+  reference chart. The 3D case is not the intended use of this plug-in.
+- **Tooltips and hotspots.** Tooltips and hotspots on line segments do nothing in the Swing device
+  and in the PNG device. This is a BIRT limitation and is not specific to this series. They work in
+  the SVG device.
 
 ## Building from source
 
-Run the setup script once - it auto-detects a **JDK 21** and an Apache Maven installation,
-validates them (`bin\java.exe` reporting Java 21 or newer, `bin\mvn.cmd`) and writes the
-git-ignored `.env`:
+Precondition: the machine runs Windows with PowerShell 7.
 
-```powershell
-.\setup.ps1
-```
+1. Run the setup script one time:
 
-Pass `-JavaHome`, `-MavenHome` or `-BirtRuntimeDir` when the detection guesses wrong or has
-nothing to go on, `-NonInteractive` to fail instead of prompting (useful in CI), and `-Force` to
-overwrite an existing `.env`. Alternatively, skip `setup.ps1` entirely and set the environment
-variables `JAVA_HOME`, `MAVEN_HOME` and (optionally) `BIRT_RUNTIME_DIR` yourself.
+   ```powershell
+   .\setup.ps1
+   ```
 
-`.env` is git-ignored - no local path is ever committed - and [`.env.example`](.env.example)
-documents the keys. When `.env` exists its values **win over the environment**: it is the
-project's pinned toolchain, and a machine-wide `JAVA_HOME` often points at a different JDK.
+2. Build the jars and install them:
 
-Then:
+   ```powershell
+   .\build.ps1 clean install
+   ```
 
-```powershell
-.\build.ps1 clean install
-```
+**Step 1.** The script detects a **JDK 21** and an Apache Maven installation, and validates both.
+`bin\java.exe` must report Java 21 or newer, and the Maven root must contain `bin\mvn.cmd`. Note:
+the script then writes the git-ignored `.env`.
 
-`build.ps1` reads that configuration, validates it, points Maven at the pinned JDK and forwards
-all arguments to Maven - the project does not build on a newer JDK's default settings, and Maven
-is not expected to be on `PATH`. The bundle jar is produced at
+Pass `-JavaHome`, `-MavenHome` or `-BirtRuntimeDir` when the detection finds nothing or finds the
+wrong installation. Pass `-NonInteractive` to fail instead of a prompt. CI uses that parameter.
+Pass `-Force` to overwrite an existing `.env`. You can also skip `setup.ps1` entirely. Then you
+must set the environment variables `JAVA_HOME`, `MAVEN_HOME` and, optionally, `BIRT_RUNTIME_DIR`
+yourself.
+
+Git ignores `.env`, so no local path ever reaches the repository.
+[`.env.example`](.env.example) documents the keys. When `.env` exists, its values **override the
+environment**. `.env` is the pinned toolchain of the project, and a machine-wide `JAVA_HOME` often
+points at a different JDK.
+
+**Step 2.** `build.ps1` reads that configuration and validates it. It points Maven at the pinned
+JDK and forwards all arguments to Maven. The project does not build with the default settings of a
+newer JDK, and the script does not need Maven on `PATH`. The build produces the jar at:
 
 ```
 build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar
 ```
 
-Run the test suite with:
+To run the test suite, use this command:
 
 ```powershell
 .\build.ps1 clean verify
 ```
 
-`build.ps1` is a Windows convenience wrapper, not a build system: on any other platform (and in
-CI) point `JAVA_HOME` at a JDK 21 and call plain `mvn -B -ntp clean verify` in the project root.
+`build.ps1` is a convenience wrapper for Windows and not a build system. On any other platform, and
+in CI, you must point `JAVA_HOME` at a JDK 21. You must then call plain `mvn -B -ntp clean verify`
+in the project root.
 
 ### Running the runtime smoke test
 
-`RuntimeSmokeIT` runs the sample report through a real, unpacked BIRT report runtime and asserts
-that the HTML output contains an SVG chart. The distribution is a ~100 MB download and is not part
-of the build, so the test is **skipped** unless it is pointed at one.
+`RuntimeSmokeIT` runs the sample report through a real, unpacked BIRT report runtime. It asserts
+that the HTML output contains an SVG chart. The distribution is a download of about 100 MB and is
+not part of the build. The test therefore stays **skipped** until you point it at a distribution.
+`birt.runtime.dir` is the directory that contains `ReportEngine\lib`.
 
-The easy way is to configure it once: set `BIRT_RUNTIME_DIR` in `.env` (`.\setup.ps1 -BirtRuntimeDir
-C:\birt-runtime-4.24.0`) or in the environment, and `build.ps1` appends `-Dbirt.runtime.dir`
-to every Maven invocation by itself - so
+The easy way is to configure the directory one time.
 
-```powershell
-.\build.ps1 clean verify
-```
+Precondition: the machine holds an unpacked BIRT runtime distribution.
 
-then runs the IT along with the rest of the suite. Passing the property explicitly still works and
-overrides the configured value:
+1. Set `BIRT_RUNTIME_DIR` in `.env`, or set the environment variable of the same name:
+
+   ```powershell
+   .\setup.ps1 -BirtRuntimeDir C:\birt-runtime-4.24.0
+   ```
+
+2. Run the whole suite:
+
+   ```powershell
+   .\build.ps1 clean verify
+   ```
+
+Note: `build.ps1` appends `-Dbirt.runtime.dir` to every Maven invocation by itself, so step 2 runs
+the test along with the rest of the suite.
+
+You can also pass the property explicitly. An explicit value overrides the configured one:
 
 ```powershell
 .\build.ps1 clean install
 .\build.ps1 test -Dtest=RuntimeSmokeIT -Dbirt.runtime.dir=C:\birt-runtime-4.24.0
 ```
 
-`birt.runtime.dir` is the directory that contains `ReportEngine\lib`. Build the jar first: the test
-puts `build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` on the runtime's class loader
-(falling back to `build\classes`, which carries the same `plugin.xml`, when the project has not
-been packaged yet). The
+Build the jar first. The test puts
+`build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` on the class loader of the runtime.
+If the build has not packaged the project yet, then the test falls back to `build\classes`, which
+carries the same `plugin.xml`. CI uses the
 [`birt-runtime-4.24.0-202606100854.zip`](https://download.eclipse.org/birt/updates/release/4.24.0/downloads/birt-runtime-4.24.0-202606100854.zip)
-distribution is the one CI uses.
+distribution.
 
 ## Continuous integration
 
-[`.github/workflows/build.yml`](.github/workflows/build.yml) runs on every push to `main`, every
-pull request and every `v*` tag:
+[`.github/workflows/build.yml`](.github/workflows/build.yml) runs on every push to `main`, on every
+pull request and on every `v*` tag. It has three jobs:
 
-1. **build** - `mvn -B -ntp clean verify` on Ubuntu with Temurin 21, and uploads two artifacts: the
-   bundle jars (`plugin-jar`) and the PNGs the render tests produced (`test-renders`).
-2. **runtime-smoke** - downloads and caches the BIRT 4.24.0 runtime distribution and runs
-   `RuntimeSmokeIT` against it, the same end-to-end check described above.
-3. **release** - tags only; see below.
+1. **build** runs `mvn -B -ntp clean verify` on Ubuntu with Temurin 21. It uploads two artifacts:
+   the jars (`plugin-jar`) and the PNG files that the render tests produce (`test-renders`).
+2. **runtime-smoke** downloads and caches the BIRT 4.24.0 runtime distribution. It then runs
+   `RuntimeSmokeIT` against that distribution, the same end-to-end check described above.
+3. **release** runs for tags only. See the next section.
 
 ## Releasing
 
-Maintainer note. A release is a tag:
+This section is for the maintainer. A release is a tag.
 
-1. Bump `<version>` in [`pom.xml`](pom.xml) - and keep `Bundle-Version` in
-   [`META-INF/MANIFEST.MF`](META-INF/MANIFEST.MF) in step with it, since that is what the OSGi
-   bundle advertises.
-2. Commit the bump.
-3. Tag it and push the tag:
+Precondition: the working tree is clean, and the whole test suite passes.
+
+1. Bump `<version>` in [`pom.xml`](pom.xml).
+2. Set `Bundle-Version` in [`META-INF/MANIFEST.MF`](META-INF/MANIFEST.MF) to the same version,
+   because that header is what the OSGi runtime advertises.
+3. Commit the version bump.
+4. Create the tag:
 
    ```powershell
    git tag v1.0.1
+   ```
+
+5. Push the tag:
+
+   ```powershell
    git push origin v1.0.1
    ```
 
-Pushing the tag runs the whole workflow: it builds and tests, runs the BIRT runtime smoke test,
-then - only if both passed - creates the GitHub Release for the tag with the bundle jar and the
-sources jar attached and generated release notes, and deploys the artifact to GitHub Packages.
+Note: the pushed tag runs the whole workflow. The workflow builds and tests the plug-in, and runs
+the BIRT runtime smoke test. It creates the GitHub Release for the tag only if both jobs pass. The
+release carries the jar, the sources jar and generated release notes. The workflow then deploys the
+artifact to GitHub Packages.
 
-The release job **refuses a tag that does not match the pom version**: it compares
-`mvn help:evaluate -Dexpression=project.version` against the tag name with the leading `v` stripped
-and fails with an explicit message, so a forgotten version bump cannot publish a mislabelled
-release.
+The release job **refuses a tag that does not match the pom version**. It compares
+`mvn help:evaluate -Dexpression=project.version` against the tag name without the leading `v`, and
+fails with an explicit message. A forgotten version bump therefore cannot publish a wrong release.
 
 ## License
 
