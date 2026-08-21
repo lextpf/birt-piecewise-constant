@@ -13,30 +13,40 @@ package io.github.lextpf.birt.chart.piecewiseconstant.model.type;
 import org.eclipse.emf.ecore.EFactory;
 
 /**
- * The <b>Factory</b> for the piecewise constant model. It provides a create method for
- * each non-abstract class of the model.
+ * The EMF <b>Factory</b> of the piecewise constant model.
+ * <p>
+ * Intent: the factory holds one create method for each class of the model that
+ * is not abstract. EMF calls the factory when it reads a series from the chart
+ * XML.
+ * <p>
+ * Side effects: none. The methods build new objects only.
  *
  * @see io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstantPackage
  */
 public interface PiecewiseConstantFactory extends EFactory {
 
 	/**
-	 * The singleton instance of the factory.
+	 * The single instance of the factory. The first read of this field returns the
+	 * registered factory of the package, or builds a new factory.
 	 */
 	PiecewiseConstantFactory eINSTANCE =
 			io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantFactoryImpl.init();
 
 	/**
-	 * Returns a new object of class '<em>Piecewise Constant Series</em>'.
+	 * Returns a new '<em>Piecewise Constant Series</em>'.
+	 * <p>
+	 * Non-obvious behaviour: the new series carries no values and no set flags. A
+	 * caller that needs the values of a stock series calls
+	 * {@code PiecewiseConstantSeriesImpl.create()} instead.
 	 *
-	 * @return a new object of class '<em>Piecewise Constant Series</em>'
+	 * @return a new '<em>Piecewise Constant Series</em>'
 	 */
 	PiecewiseConstantSeries createPiecewiseConstantSeries();
 
 	/**
-	 * Returns the package supported by this factory.
+	 * Returns the package of this factory.
 	 *
-	 * @return the package supported by this factory
+	 * @return the package of this factory
 	 */
 	PiecewiseConstantPackage getPiecewiseConstantPackage();
 }
