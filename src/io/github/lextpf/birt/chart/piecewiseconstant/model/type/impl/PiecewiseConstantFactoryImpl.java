@@ -23,14 +23,32 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstan
 import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
 
 /**
- * An implementation of the model <b>Factory</b>.
+ * The implementation of the model <b>Factory</b>.
+ * <p>
+ * Intent: the class builds the objects of the piecewise constant model, and it
+ * converts the step mode between its literal string and its literal object.
+ * <p>
+ * Constraints: EMF calls the methods of this class while it reads or writes the
+ * chart XML. The methods throw an {@link IllegalArgumentException} for a
+ * classifier that this package does not hold.
+ * <p>
+ * Side effects: none.
  */
 public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements PiecewiseConstantFactory {
 
 	/**
-	 * Creates the default factory implementation.
+	 * Returns the factory of the piecewise constant package.
+	 * <p>
+	 * Intent: the field {@link PiecewiseConstantFactory#eINSTANCE} calls this
+	 * method. Callers must read that field and must not call this method directly.
+	 * <p>
+	 * Non-obvious behaviour: the method returns the registered factory when the
+	 * package is already in {@code EPackage.Registry.INSTANCE}. If the lookup throws
+	 * an exception, then the method writes the exception to the log of
+	 * {@code EcorePlugin} and builds a new factory.
 	 *
-	 * @return the registered factory for the piecewise constant namespace, or a new one
+	 * @return the registered factory of the piecewise constant namespace, or a new
+	 *         factory
 	 */
 	public static PiecewiseConstantFactory init() {
 		try {
@@ -46,7 +64,7 @@ public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements Piecew
 	}
 
 	/**
-	 * Creates an instance of the factory.
+	 * Builds a factory. EMF needs a public constructor without arguments here.
 	 */
 	public PiecewiseConstantFactoryImpl() {
 		super();
@@ -83,11 +101,15 @@ public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements Piecew
 	}
 
 	/**
-	 * Parses a '<em>Step Mode</em>' literal.
+	 * Reads a '<em>Step Mode</em>' literal from its literal string.
+	 * <p>
+	 * Constraints: the string must be the literal string of a step mode. The
+	 * comparison is case-sensitive.
 	 *
-	 * @param eDataType    the enum's data type
-	 * @param initialValue the literal as written in the chart XML
+	 * @param eDataType    the data type of the enumeration
+	 * @param initialValue the literal string, as written in the chart XML
 	 * @return the matching literal object
+	 * @throws IllegalArgumentException if no literal has this string
 	 */
 	public StepMode createStepModeFromString(EDataType eDataType, String initialValue) {
 		StepMode result = StepMode.get(initialValue);
@@ -99,11 +121,14 @@ public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements Piecew
 	}
 
 	/**
-	 * Renders a '<em>Step Mode</em>' literal.
+	 * Writes a '<em>Step Mode</em>' literal as its literal string.
+	 * <p>
+	 * Constraints: if the value is <code>null</code>, then the method returns
+	 * <code>null</code>.
 	 *
-	 * @param eDataType     the enum's data type
+	 * @param eDataType     the data type of the enumeration
 	 * @param instanceValue the literal object
-	 * @return the literal as written in the chart XML
+	 * @return the literal string, as written in the chart XML
 	 */
 	public String convertStepModeToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
