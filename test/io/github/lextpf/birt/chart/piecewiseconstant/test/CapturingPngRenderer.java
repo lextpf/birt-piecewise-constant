@@ -31,26 +31,33 @@ import org.eclipse.birt.chart.model.attribute.impl.BoundsImpl;
 import com.ibm.icu.util.ULocale;
 
 /**
- * A real PNG device that additionally records every series line segment the
- * chart engine draws, and counts the ovals it draws for isolated data points -
- * the geometric oracle the piecewise-constant tests assert against.
+ * A PNG device that also records every line segment of a value series, and
+ * counts the ovals the chart engine draws for isolated data points.
  * <p>
- * Every line of a chart, including the ones of the series, ends up in
- * {@code drawLine}, and BIRT tags each render event with a
- * {@link StructureSource} saying which part of the chart it belongs to. Series
- * line segments carry {@link StructureType#SERIES} with the series itself as
- * the source object, axes and grid lines carry {@link StructureType#AXIS}, and
- * a data point that has no neighbour to connect to is drawn as an oval tagged
- * {@link StructureType#SERIES_DATA_POINT}. Filtering on those types isolates
- * exactly the series geometry.
+ * Intent: the geometry tests read the recorded segments instead of the pixels
+ * of the image. The device still writes the PNG file.
+ * <p>
+ * Constraints: the caller must configure the device with
+ * {@link #configureExport(IDeviceRenderer, File)} before the chart engine reads
+ * the display server.
+ * <p>
+ * Non-obvious behaviour: every line of a chart reaches {@code drawLine}. The
+ * chart engine tags each render event with a {@link StructureSource}. That
+ * source names the part of the chart the event belongs to. A line segment of a
+ * value series carries {@link StructureType#SERIES} with the series as the
+ * source object. An axis line and a grid line carry {@link StructureType#AXIS}.
+ * A data point that has no neighbour to connect to is an isolated data point.
+ * The chart engine draws that data point as an oval that carries
+ * {@link StructureType#SERIES_DATA_POINT}. A filter on those types therefore
+ * selects the geometry of the value series and nothing else.
  * <p>
  * {@code DeferredCache.flushLines} replays the cached line events in insertion
- * order, so {@link #segments} is in the order the renderer's data point seeker
- * produced them.
+ * order. {@link #segments} is therefore in the order the data point seeker of
+ * the renderer produced them.
  */
 public class CapturingPngRenderer extends PngRendererImpl {
 
-	/** A captured line segment in device coordinates. */
+	/** One recorded line segment, in device coordinates. */
 	public record Seg(double x1, double y1, double x2, double y2) {
 
 		/** @return the start point as <code>{x, y}</code>. */
@@ -64,67 +71,69 @@ public class CapturingPngRenderer extends PngRendererImpl {
 		}
 	}
 
-	/** Every series line segment, in the order it was drawn. */
+	/** Every line segment of a value series, in the order the device drew it. */
 	public final List<Seg> segments = new ArrayList<>();
 
 	/**
-	 * The series each entry of {@link #segments} belongs to; index aligned with
-	 * {@link #segments}.
+	 * The series that each entry of {@link #segments} belongs to. The index is the
+	 * index into {@link #segments}.
 	 */
 	private final List<Object> segmentSeries = new ArrayList<>();
 
 	/**
-	 * The number of ovals <em>stroked</em> for a series data point - which is the
-	 * number of isolated data points, the ones that have no neighbour to connect
-	 * to and are therefore drawn as a dot instead of a line.
+	 * The number of ovals the device strokes for a data point of a value series.
+	 * That number is the number of isolated data points, which are the data points
+	 * that have no neighbour to connect to.
 	 * <p>
-	 * The two are the same thing because of how BIRT emits the two kinds of oval a
-	 * series can produce. An isolated point comes out of
-	 * {@code Line.LineDataPointsRenderer2D.drawSinglePoint} as a bare
-	 * {@code drawOval} whose outline is the series' own line attributes - it is a
-	 * stroke and nothing else. A data point <em>marker</em> comes out of
+	 * Non-obvious behaviour: a value series produces two kinds of oval, and only
+	 * one kind gets a stroke. An isolated data point comes from
+	 * {@code Line.LineDataPointsRenderer2D.drawSinglePoint} as a plain
+	 * {@code drawOval}. The outline of that oval is the line attributes of the
+	 * series, so the chart engine strokes it. A marker comes from
 	 * {@code MarkerRenderer} as a {@code fillOval} plus a {@code drawOval} whose
-	 * outline is the marker's, and the fixtures switch that outline off, so the
-	 * marker is filled but never stroked. {@code G2dRendererBase.drawOval} agrees:
-	 * it returns without touching the canvas when the outline is invisible.
-	 * Counting only the ovals that really get a stroke therefore counts isolated
-	 * points and no markers, whatever shape the markers happen to be - a
-	 * distinction that did not matter while they were boxes, which are drawn as
-	 * polygons, and does now that they are circles.
+	 * outline is the outline of the marker. The fixtures make that outline
+	 * invisible, so the chart engine fills the marker but never strokes it.
+	 * {@code G2dRendererBase.drawOval} returns without any drawing if the outline
+	 * is invisible. A count of the stroked ovals therefore counts isolated data
+	 * points and no marker, for every marker shape. The distinction matters now
+	 * that the markers are circles. It did not matter while they were boxes,
+	 * because the device draws a box as a polygon.
 	 */
 	public int seriesPointOvals;
 
 	/**
-	 * The resolution every test render is exported at, in dots per inch - four
-	 * times the 72 dpi a chart model is measured in, three times the 96 dpi a
-	 * device falls back to.
+	 * The export resolution of every test render, in dots per inch. The value is
+	 * four times the 72 dots per inch of a chart model. It is three times the 96
+	 * dots per inch that a device falls back to.
 	 * <p>
-	 * BIRT lays a chart out in points and only scales on the way to the device:
-	 * {@code Generator.render} hands the device an {@code EXPECTED_BOUNDS} scaled
-	 * by {@code dpi / 72}, so the 600x400 pt chart becomes a 2400x1600 px image.
-	 * Text and markers follow that factor -
+	 * Non-obvious behaviour: the chart engine lays a chart out in points. It scales
+	 * the layout only when it passes the bounds to the device.
+	 * {@code Generator.render} gives the device an {@code EXPECTED_BOUNDS} that it
+	 * scales by {@code dpi / 72}. The
+	 * 600x400 point chart therefore becomes a 2400x1600 pixel image. Text and
+	 * markers follow that factor, because
 	 * {@code G2dDisplayServerBase.createFont} multiplies the point size by it and
-	 * {@code MarkerRenderer} multiplies the marker size by it - so they are
-	 * re-rendered at the higher resolution rather than upsampled. Anti-aliasing is
-	 * on regardless: {@code G2dRendererBase.prepareGraphicsContext} sets both the
-	 * shape and the text hint.
+	 * {@code MarkerRenderer} multiplies the marker size by it. The device draws
+	 * them at the export resolution and does not scale an image up. Anti-aliasing
+	 * is always on, because {@code G2dRendererBase.prepareGraphicsContext} sets
+	 * the shape hint and the text hint.
 	 * <p>
-	 * Line thickness does <em>not</em> follow. {@code Generator.render} does walk
-	 * the model multiplying every {@code LineAttributes} by the integer scale, but
-	 * it does so on a copy it makes for itself, while the series renderers were
-	 * handed the original model back in {@code Generator.build} and read their
-	 * thickness from that - so every stroke stays as many device pixels wide as
-	 * the model says, however high the resolution goes.
+	 * Line thickness does not follow that factor. {@code Generator.render} walks
+	 * the model and multiplies every {@code LineAttributes} thickness by the
+	 * integer scale, but it does that on a copy of the model. The series renderers
+	 * received the original model in {@code Generator.build} and read the
+	 * thickness from it. Every stroke therefore stays as many device pixels wide
+	 * as the model states, at every resolution.
 	 */
 	public static final int EXPORT_DPI = 288;
 
 	/**
-	 * Points the device at an output file and puts it into export resolution.
+	 * Names the output file of the device and sets the export resolution.
 	 * <p>
-	 * The order matters. {@code SwingDisplayServer.getDpiResolution} caches the
-	 * resolution the first time it is asked for and only consults the value passed
-	 * here while that cache is still empty, so the property has to be set before
-	 * anything - {@code Generator.build} above all - reads the display server.
+	 * Constraints: the caller must call this method before the chart engine reads
+	 * the display server, and {@code Generator.build} reads it.
+	 * {@code SwingDisplayServer.getDpiResolution} caches the resolution on the
+	 * first call, and it reads the value set here only while that cache is empty.
 	 *
 	 * @param device the device to configure
 	 * @param out    the file the device writes to
@@ -134,6 +143,12 @@ public class CapturingPngRenderer extends PngRendererImpl {
 		device.setProperty(IDeviceRenderer.DPI_RESOLUTION, Integer.valueOf(EXPORT_DPI));
 	}
 
+	/**
+	 * Records the line if it belongs to a value series, and then draws it.
+	 *
+	 * @param lre the line the chart engine draws
+	 * @throws ChartException if the device fails
+	 */
 	@Override
 	public void drawLine(LineRenderEvent lre) throws ChartException {
 		if (lre.getSource() instanceof StructureSource ss && ss.getType() == StructureType.SERIES) {
@@ -144,6 +159,13 @@ public class CapturingPngRenderer extends PngRendererImpl {
 		super.drawLine(lre);
 	}
 
+	/**
+	 * Counts the oval if it belongs to a data point of a value series and the
+	 * device strokes it, and then draws it.
+	 *
+	 * @param ore the oval the chart engine draws
+	 * @throws ChartException if the device fails
+	 */
 	@Override
 	public void drawOval(OvalRenderEvent ore) throws ChartException {
 		if (ore.getSource() instanceof StructureSource ss && ss.getType() == StructureType.SERIES_DATA_POINT
@@ -154,10 +176,12 @@ public class CapturingPngRenderer extends PngRendererImpl {
 	}
 
 	/**
-	 * @param ore an oval the chart engine is about to draw
-	 * @return whether the device will actually put a stroke on the canvas for it -
-	 *         the same precondition {@code G2dRendererBase.drawOval} checks before
-	 *         it does any drawing at all
+	 * Reports whether the device puts a stroke on the canvas for one oval. The
+	 * method tests the same condition that {@code G2dRendererBase.drawOval} tests
+	 * before it draws.
+	 *
+	 * @param ore an oval that the chart engine is about to draw
+	 * @return {@code true} if the device strokes the oval
 	 */
 	private static boolean isStroked(OvalRenderEvent ore) {
 		LineAttributes outline = ore.getOutline();
@@ -165,11 +189,14 @@ public class CapturingPngRenderer extends PngRendererImpl {
 	}
 
 	/**
-	 * Splits {@link #segments} per series, without needing to know the series
-	 * objects: segments are grouped by the identity of their source object, and the
-	 * groups come in the order their series was first drawn.
+	 * Splits {@link #segments} into one list per value series.
+	 * <p>
+	 * Non-obvious behaviour: the method groups the segments by the identity of
+	 * their source object, so the caller does not need to know the series objects.
+	 * The groups come in the order in which the device drew the first segment of
+	 * each series.
 	 *
-	 * @return one segment list per series that drew at least one segment
+	 * @return one segment list per value series that drew one segment or more
 	 */
 	public List<List<Seg>> segmentGroups() {
 		List<Object> order = new ArrayList<>();
@@ -193,12 +220,18 @@ public class CapturingPngRenderer extends PngRendererImpl {
 	}
 
 	/**
-	 * Builds and renders a chart into a PNG file and returns the series segments
-	 * that were drawn on the way.
+	 * Builds a chart, renders it into a PNG file and returns the recorded
+	 * segments.
+	 * <p>
+	 * Constraints: the chart bounds are 600 x 400 points, and the locale is
+	 * English.
+	 * <p>
+	 * Side effects: the method writes the PNG file and it fills
+	 * {@link #segments} and {@link #seriesPointOvals} of <code>idr</code>.
 	 *
 	 * @param chart  the chart model to render
 	 * @param pngOut the PNG file the device writes to
-	 * @param idr    the capturing device to render with
+	 * @param idr    the device to render with
 	 * @return {@link #segments} of <code>idr</code>
 	 * @throws ChartException if the chart engine fails
 	 */
@@ -217,8 +250,16 @@ public class CapturingPngRenderer extends PngRendererImpl {
 	}
 
 	/**
-	 * @return the directory named by the <code>piecewiseconstant.test.out</code> system
-	 *         property, created if it does not exist yet
+	 * Returns the directory that every test writes its output files to.
+	 * <p>
+	 * Side effects: the method creates the directory if it does not exist.
+	 *
+	 * @return the directory named by the <code>piecewiseconstant.test.out</code>
+	 *         system property. If that property is not set, then the method
+	 *         returns the <code>test-output</code> directory of the working
+	 *         directory.
+	 * @throws IllegalStateException if the directory does not exist and the method
+	 *                               cannot create it
 	 */
 	public static File outputDirectory() {
 		String configured = System.getProperty("piecewiseconstant.test.out"); //$NON-NLS-1$
