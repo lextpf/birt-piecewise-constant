@@ -39,8 +39,11 @@ import io.github.lextpf.birt.chart.piecewiseconstant.render.PiecewiseConstantLin
 import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension;
 
 /**
- * Verifies that the running BIRT platform finds everything this bundle's
- * {@code plugin.xml} registers.
+ * Verifies that the running chart engine finds every extension that the
+ * {@code plugin.xml} of this plug-in declares.
+ * <p>
+ * Constraints: {@link ChartPlatformExtension} starts the POJO runtime, and the
+ * extension registry of that runtime answers every lookup in this class.
  */
 @ExtendWith(ChartPlatformExtension.class)
 class PluginDiscoveryTest {
@@ -49,7 +52,7 @@ class PluginDiscoveryTest {
 	void rendererExtensionResolvesToPiecewiseConstantLine() throws Exception {
 		BaseRenderer renderer = PluginSettings.instance().getRenderer(PiecewiseConstantSeriesImpl.class);
 
-		assertNotNull(renderer, "no modelRenderer registered for PiecewiseConstantSeriesImpl");
+		assertNotNull(renderer, "the chart engine found no modelRenderer for PiecewiseConstantSeriesImpl");
 		assertSame(PiecewiseConstantLine.class, renderer.getClass());
 	}
 
@@ -57,7 +60,7 @@ class PluginDiscoveryTest {
 	void dataSetProcessorExtensionResolvesToTheStockProcessor() throws Exception {
 		IDataSetProcessor processor = PluginSettings.instance().getDataSetProcessor(PiecewiseConstantSeriesImpl.class);
 
-		assertNotNull(processor, "no datasetProcessor registered for PiecewiseConstantSeriesImpl");
+		assertNotNull(processor, "the chart engine found no datasetProcessor for PiecewiseConstantSeriesImpl");
 		assertSame(DataSetProcessorImpl.class, processor.getClass());
 	}
 
@@ -66,7 +69,8 @@ class PluginDiscoveryTest {
 		Map<String, Object> packages = PluginSettings.instance().getExtChartModelPackages();
 
 		assertTrue(packages.containsKey(PiecewiseConstantPackage.eNS_URI),
-				"charttypes extension did not contribute " + PiecewiseConstantPackage.eNS_URI + ", got " + packages.keySet());
+				"the charttypes extension did not contribute " + PiecewiseConstantPackage.eNS_URI
+						+ "; the registered namespaces are " + packages.keySet());
 		assertSame(PiecewiseConstantPackage.eINSTANCE, packages.get(PiecewiseConstantPackage.eNS_URI));
 		assertSame(PiecewiseConstantPackage.eINSTANCE, EPackage.Registry.INSTANCE.get(PiecewiseConstantPackage.eNS_URI));
 	}
@@ -89,7 +93,7 @@ class PluginDiscoveryTest {
 
 		assertSame(PiecewiseConstantPackage.Literals.PIECEWISE_CONSTANT_SERIES, series.eClass());
 		assertTrue(ChartDynamicExtension.isExtended(series),
-				"ChartDynamicExtension did not pick up the piecewise constant EClass");
+				"ChartDynamicExtension does not recognise the piecewise constant EClass");
 	}
 
 	@Test
