@@ -34,25 +34,34 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartFixtures.Options;
 import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension;
 
 /**
- * Checks the geometry {@link PiecewiseConstantLine} actually puts on the device.
+ * Checks the geometry that {@link PiecewiseConstantLine} puts on the device.
  * <p>
- * The oracle is differential: the same chart is rendered twice, once with a
- * stock line series and once with a piecewise constant series, and the
- * piecewise constant series' vertices must be exactly the stock line's vertices
- * with the staircase corners inserted. Because both charts are built from the
- * same fixture with the same options, the layout math is identical, so the
- * coordinates are compared with exact <code>double</code> equality.
+ * Intent: each test renders the same chart twice, once with a stock
+ * {@code LineSeries} and once with a piecewise constant series. The vertices of
+ * the piecewise constant series must be the vertices of the reference chart
+ * with the corner vertices inserted.
+ * <p>
+ * Non-obvious behaviour: the fixture builds both charts from the same options,
+ * so the layout calculations are identical. The device coordinates of the real
+ * data points are therefore equal bit for bit, and the tests compare them with
+ * exact <code>double</code> equality.
  */
 @ExtendWith(ChartPlatformExtension.class)
 class PiecewiseConstantGeometryTest {
 
-	/** Three points on categories A, B, C - two steps, one per mode variant. */
+	/** Three data points on the categories A, B and C. The line makes two steps. */
 	private static final Double[] VALUES = { 5.0, 9.0, 3.0 };
 
-	/** The values of the second series of the stacked and percent charts. */
+	/**
+	 * The values of the second value series of the stacked chart and of the
+	 * percent chart.
+	 */
 	private static final Double[] SECOND_VALUES = { 3.0, 4.0, 2.0 };
 
-	/** @return options every geometry test starts from: nothing but the line. */
+	/**
+	 * @return the options that every geometry test starts from. The chart draws
+	 *         the line only, without markers.
+	 */
 	private static Options bare() {
 		return new Options().markersVisible(false);
 	}
@@ -81,14 +90,16 @@ class PiecewiseConstantGeometryTest {
 		Options options = bare().transposed(true);
 		Oracle oracle = assertStaircase(options, StepMode.AFTER_LITERAL, VALUES, 4, "geometry-after-transposed");
 
-		// The base axis now runs down the device, so the AFTER corner takes its y
-		// from the right point and its x from the left one - treads are vertical and
-		// risers horizontal, the mirror image of the untransposed case.
+		// The category axis now runs down the device. The corner vertex of the AFTER
+		// mode therefore takes its y from the right data point and its x from the
+		// left one. The device draws each tread as a vertical line and each step as a
+		// horizontal line. The result is the mirror image of the chart that is not
+		// transposed.
 		double[] p0 = oracle.stock.get(0);
 		double[] p1 = oracle.stock.get(1);
 		double[] corner = oracle.step.get(1);
-		assertEquals(p0[0], corner[0], "the corner keeps the value coordinate of the left point");
-		assertEquals(p1[1], corner[1], "the corner takes the base coordinate of the right point");
+		assertEquals(p0[0], corner[0], "the corner vertex keeps the value coordinate of the left data point");
+		assertEquals(p1[1], corner[1], "the corner vertex takes the base coordinate of the right data point");
 	}
 
 	// ----------------------------------------------------------- 3./4. missing
@@ -102,11 +113,11 @@ class PiecewiseConstantGeometryTest {
 		CapturingPngRenderer step = render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, values, options),
 				"geometry-null-gap");
 
-		assertEquals(0, stock.segments.size(), "the stock line does not bridge the gap either");
-		assertEquals(0, step.segments.size(), "a broken run has no segment to put a corner on");
-		assertTrue(stock.seriesPointOvals > 0, "the stock line draws its isolated points as ovals");
+		assertEquals(0, stock.segments.size(), "the reference chart does not bridge the missing value either");
+		assertEquals(0, step.segments.size(), "a broken run has no segment that can carry a corner vertex");
+		assertTrue(stock.seriesPointOvals > 0, "the reference chart draws its isolated data points as ovals");
 		assertEquals(stock.seriesPointOvals, step.seriesPointOvals,
-				"the piecewise constant series draws exactly the isolated points the stock line draws");
+				"the piecewise constant series draws the isolated data points that the reference chart draws");
 	}
 
 	@Test
@@ -116,7 +127,7 @@ class PiecewiseConstantGeometryTest {
 
 		Oracle oracle = assertStaircase(options, StepMode.AFTER_LITERAL, values, 2, "geometry-null-connected");
 
-		assertEquals(2, oracle.stock.size(), "the stock line bridges the gap with a single segment");
+		assertEquals(2, oracle.stock.size(), "the reference chart bridges the missing value with one segment");
 	}
 
 	// --------------------------------------------------------------- 5. flat
@@ -136,9 +147,10 @@ class PiecewiseConstantGeometryTest {
 
 	@Test
 	void aPercentAxisStillProducesAStaircase() throws Exception {
-		// A percent axis reads its scale from the stacked group of a series, so
-		// BIRT only computes one for stacked series - an unstacked percent chart
-		// dies with a null AxisSubUnit in PlotWith2DAxes.getSeriesRenderingHints.
+		// A percent axis reads its scale from the stacked group of a series, and the
+		// chart engine computes that group for stacked series only. A percent chart
+		// that is not stacked fails with a null AxisSubUnit in
+		// PlotWith2DAxes.getSeriesRenderingHints.
 		assertStaircasePerSeries(bare().percent(true).stacked(true).secondValues(SECOND_VALUES), StepMode.AFTER_LITERAL,
 				"geometry-percent");
 	}
@@ -153,12 +165,12 @@ class PiecewiseConstantGeometryTest {
 
 	@Test
 	void threeDimensionalRenderingGetsALocation3DArray() {
-		// The stock three dimensional data point renderer hard casts the location
-		// array to Location3D[], so an expansion that allocated a plain Location[]
-		// would blow up with a ClassCastException before drawing anything. There is
-		// nothing else to assert here: 3D lines are drawn as Line3DRenderEvents
-		// through the z-sorted deferred cache, not as the LineRenderEvents the
-		// capturing device records.
+		// The stock three dimensional data point renderer casts the location array to
+		// Location3D[] without a check. If the expansion allocated a plain
+		// Location[], then the cast would fail with a ClassCastException before any
+		// drawing. The test asserts nothing else, because the chart engine draws a
+		// three dimensional line as a Line3DRenderEvent through the z-sorted deferred
+		// cache, and the device records LineRenderEvents only.
 		Options options = bare().dimension(ChartDimension.THREE_DIMENSIONAL_LITERAL);
 		assertDoesNotThrow(() -> render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES, options),
 				"geometry-3d"));
@@ -168,15 +180,15 @@ class PiecewiseConstantGeometryTest {
 
 	@Test
 	void aCurveSeriesStillSteps() throws Exception {
-		// Layout does not depend on the curve flag, so the plain chart is a valid
-		// oracle for the curved one; the assertion is that the curve path in
-		// Line.renderSeries is bypassed and the staircase comes out unchanged.
+		// The layout does not depend on the curve flag, so the plain chart is a valid
+		// reference chart for the curved one. The test asserts that the renderer
+		// skips the curve path of Line.renderSeries and draws the same vertices.
 		List<double[]> stock = vertices(render(ChartFixtures.lineChart(VALUES, bare()), "geometry-curve-oracle").segments);
 
 		List<Seg> steps = render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES, bare().curve(true)),
 				"geometry-curve").segments;
 
-		assertEquals(4, steps.size(), "a curved piecewise constant series is still a staircase, not a spline");
+		assertEquals(4, steps.size(), "a curved piecewise constant series stays piecewise constant and is no spline");
 		assertAxisParallel(steps);
 		assertVertices(staircase(stock, StepMode.AFTER_LITERAL, false), vertices(steps));
 	}
@@ -190,9 +202,9 @@ class PiecewiseConstantGeometryTest {
 		List<Seg> steps = render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES, options),
 				"geometry-shadow").segments;
 
-		assertEquals(8, steps.size(), "the shadow doubles the segment count of the four step staircase");
-		// Line renders the shadow before the line itself, so the first half of the
-		// captured segments is the shadow copy.
+		assertEquals(8, steps.size(), "the shadow doubles the four segments of the piecewise constant line");
+		// Line draws the shadow before the line, so the first half of the recorded
+		// segments is the shadow copy.
 		for (int k = 0; k < 4; k++) {
 			Seg shadow = steps.get(k);
 			Seg main = steps.get(k + 4);
@@ -213,19 +225,20 @@ class PiecewiseConstantGeometryTest {
 		CapturingPngRenderer step = render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES, options),
 				"geometry-markers");
 
-		assertEquals(4, step.segments.size(), "markers and labels add no line segments");
+		assertEquals(4, step.segments.size(), "markers and data point labels add no line segment");
 		assertAxisParallel(step.segments);
 		assertEquals(0, step.seriesPointOvals,
-				"a connected run has no isolated point, and the circle markers are filled but never"
-						+ " stroked, so nothing counts as a stroked oval");
+				"a connected run has no isolated data point, and the device fills the circle markers but"
+						+ " never strokes them, so it strokes no oval at all");
 	}
 
 	// ------------------------------------------------------- 13. degenerate
 
 	@Test
 	void aSinglePointDrawsNoSegment() throws Exception {
-		// Only the seeker that breaks runs at a missing value detects isolated
-		// points, so this is the variant that draws the lone point at all.
+		// Only the data point seeker that breaks a run at a missing value detects an
+		// isolated data point. That seeker runs if connectMissingValue is false, and
+		// only then does the chart engine draw the single data point.
 		Options options = bare().connectMissingValue(false);
 		Double[] values = { 5.0 };
 
@@ -233,18 +246,19 @@ class PiecewiseConstantGeometryTest {
 		CapturingPngRenderer step = render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, values, options),
 				"geometry-single");
 
-		assertEquals(0, stock.segments.size(), "one point cannot make a segment");
-		assertEquals(0, step.segments.size(), "one point cannot make a step either");
-		assertEquals(stock.seriesPointOvals, step.seriesPointOvals, "the lone point is drawn the same way");
-		assertEquals(1, step.seriesPointOvals, "the lone point is drawn as one oval");
+		assertEquals(0, stock.segments.size(), "one data point cannot make a segment");
+		assertEquals(0, step.segments.size(), "one data point cannot make a step either");
+		assertEquals(stock.seriesPointOvals, step.seriesPointOvals,
+				"both charts draw the single data point the same way");
+		assertEquals(1, step.seriesPointOvals, "the chart draws the single data point as one oval");
 	}
 
 	@Test
 	void anEmptySeriesFailsExactlyWhereAStockLineFails() {
-		// An empty data set never reaches a renderer: BIRT rejects it while computing
-		// the axis scale, for a piecewise constant series exactly as for a stock
-		// line. The point of the test is that the piecewise constant series does not
-		// turn that clean precondition failure into something worse.
+		// An empty data set never reaches a renderer. The chart engine rejects it
+		// while it computes the axis scale, for a piecewise constant series and for a
+		// stock LineSeries alike. This test proves that the piecewise constant series
+		// keeps that precondition failure and does not replace it with a worse one.
 		Options options = bare().connectMissingValue(false);
 
 		ChartException stock = assertThrows(ChartException.class,
@@ -253,26 +267,36 @@ class PiecewiseConstantGeometryTest {
 				() -> render(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, new Double[0], options),
 						"geometry-empty"));
 
-		assertEquals(stock.getMessage(), step.getMessage(), "both series fail the same way");
+		assertEquals(stock.getMessage(), step.getMessage(), "both series must fail with the same message");
 	}
 
 	// ---------------------------------------------------------------- helpers
 
-	/** The vertex lists of a differential comparison. */
+	/**
+	 * The two vertex lists of one comparison: {@code stock} contains the vertices of
+	 * the reference chart, and {@code step} contains the vertices of the piecewise
+	 * constant chart.
+	 */
 	private record Oracle(List<double[]> stock, List<double[]> step) {
 	}
 
 	/**
-	 * Renders the stock line chart and the piecewise constant chart for the same
-	 * options and asserts that the piecewise constant series is the stock line with
-	 * the staircase corners of <code>mode</code> inserted.
+	 * Renders the reference chart and the piecewise constant chart with the same
+	 * options. The method then asserts that the piecewise constant chart contains
+	 * the vertices of the reference chart plus the corner vertices of
+	 * <code>mode</code>.
+	 * <p>
+	 * Side effects: the method writes two PNG files into the test output
+	 * directory.
 	 *
-	 * @param options          the fixture options both charts are built with
+	 * @param options          the fixture options of both charts
 	 * @param mode             the step mode
-	 * @param values           the value series
-	 * @param expectedSegments how many segments the staircase must consist of
-	 * @param name             the base name of the PNG files written on the way
+	 * @param values           the values of the value series
+	 * @param expectedSegments the number of segments the piecewise constant line
+	 *                         must contain
+	 * @param name             the base name of the two PNG files
 	 * @return both vertex lists
+	 * @throws Exception if the chart engine fails
 	 */
 	private Oracle assertStaircase(Options options, StepMode mode, Double[] values, int expectedSegments, String name)
 			throws Exception {
@@ -288,18 +312,28 @@ class PiecewiseConstantGeometryTest {
 	}
 
 	/**
-	 * The same differential comparison as {@link #assertStaircase}, but for a chart
-	 * with more than one value series: the captured segments are split per series
-	 * by the identity of the {@code StructureSource} they carry, and every series
-	 * is compared with its counterpart in the stock rendering.
+	 * Runs the comparison of {@link #assertStaircase} for a chart with more than
+	 * one value series.
+	 * <p>
+	 * The method splits the recorded segments per series by the identity of the
+	 * {@code StructureSource} that each segment carries. It then compares every
+	 * value series with the same value series of the reference chart.
+	 * <p>
+	 * Side effects: the method writes two PNG files into the test output
+	 * directory.
+	 *
+	 * @param options the fixture options of both charts
+	 * @param mode    the step mode
+	 * @param name    the base name of the two PNG files
+	 * @throws Exception if the chart engine fails
 	 */
 	private void assertStaircasePerSeries(Options options, StepMode mode, String name) throws Exception {
 		List<List<Seg>> stock = render(ChartFixtures.lineChart(VALUES, options), name + "-oracle").segmentGroups();
 
 		List<List<Seg>> steps = render(ChartFixtures.piecewiseConstantChart(mode, VALUES, options), name).segmentGroups();
 
-		assertEquals(2, stock.size(), "the stock chart draws two series");
-		assertEquals(stock.size(), steps.size(), "the piecewise constant chart draws the same series");
+		assertEquals(2, stock.size(), "the reference chart draws two value series");
+		assertEquals(stock.size(), steps.size(), "the piecewise constant chart draws the same value series");
 		for (int series = 0; series < stock.size(); series++) {
 			assertAxisParallel(steps.get(series));
 			assertVertices(staircase(vertices(stock.get(series)), mode, options.isTransposed()),
@@ -308,8 +342,13 @@ class PiecewiseConstantGeometryTest {
 	}
 
 	/**
-	 * Renders a chart to <code>&lt;name&gt;.png</code> in the test output directory
-	 * and returns the device that captured it.
+	 * Renders one chart to <code>&lt;name&gt;.png</code> in the test output
+	 * directory.
+	 *
+	 * @param chart the chart to render
+	 * @param name  the base name of the PNG file
+	 * @return the device that recorded the render
+	 * @throws Exception if the chart engine fails
 	 */
 	private static CapturingPngRenderer render(ChartWithAxes chart, String name) throws Exception {
 		CapturingPngRenderer device = new CapturingPngRenderer();
@@ -318,11 +357,15 @@ class PiecewiseConstantGeometryTest {
 	}
 
 	/**
-	 * Turns a run of segments into its vertex list, asserting on the way that the
-	 * run is connected: every segment starts exactly where the previous one ended.
+	 * Turns a run of segments into its vertex list. The method also asserts that
+	 * the run is connected: every segment starts where the segment before it
+	 * ended.
+	 *
+	 * @param segments the recorded segments of one value series
+	 * @return the vertices of the run, in drawing order
 	 */
 	private static List<double[]> vertices(List<Seg> segments) {
-		assertTrue(!segments.isEmpty(), "expected at least one segment");
+		assertTrue(!segments.isEmpty(), "the value series drew no segment");
 
 		List<double[]> points = new ArrayList<>();
 		points.add(segments.get(0).start());
@@ -338,7 +381,11 @@ class PiecewiseConstantGeometryTest {
 		return points;
 	}
 
-	/** Every staircase segment is either a tread or a riser, never a diagonal. */
+	/**
+	 * Asserts that every segment is a tread or a step, and never a diagonal.
+	 *
+	 * @param segments the recorded segments of one value series
+	 */
 	private static void assertAxisParallel(List<Seg> segments) {
 		for (Seg segment : segments) {
 			assertTrue((segment.x1() == segment.x2()) ^ (segment.y1() == segment.y2()),
@@ -347,16 +394,19 @@ class PiecewiseConstantGeometryTest {
 	}
 
 	/**
-	 * The staircase expected over a run of data point vertices.
+	 * Computes the vertices that the piecewise constant line must contain over a run
+	 * of data point vertices.
 	 *
-	 * @param points     the vertices of the stock line rendering
+	 * @param points     the vertices of the reference chart
 	 * @param mode       the step mode
-	 * @param transposed whether base and value swap device axes
+	 * @param transposed {@code true} if the base coordinate and the value
+	 *                   coordinate swap device axes
+	 * @return the expected vertices, in drawing order
 	 */
 	private static List<double[]> staircase(List<double[]> points, StepMode mode, boolean transposed) {
-		// In a transposed chart the base axis runs down the device y axis and the
-		// value axis across the device x axis, so the roles of the two coordinates
-		// of a device point swap.
+		// In a transposed chart the category axis runs down the device y axis and the
+		// value axis runs across the device x axis. The two coordinates of a device
+		// point therefore swap their roles.
 		int base = transposed ? 1 : 0;
 		int value = transposed ? 0 : 1;
 
@@ -370,7 +420,7 @@ class PiecewiseConstantGeometryTest {
 
 			double[] right = points.get(i + 1);
 			if (left[value] == right[value]) {
-				// A flat step needs no corner.
+				// Two equal values make one tread and need no corner vertex.
 				continue;
 			}
 
@@ -387,6 +437,13 @@ class PiecewiseConstantGeometryTest {
 		return out;
 	}
 
+	/**
+	 * @param baseCoordinate  the coordinate along the category axis
+	 * @param valueCoordinate the coordinate along the value axis
+	 * @param base            the index of the base coordinate in a device point
+	 * @param value           the index of the value coordinate in a device point
+	 * @return one corner vertex as a device point
+	 */
 	private static double[] corner(double baseCoordinate, double valueCoordinate, int base, int value) {
 		double[] point = new double[2];
 		point[base] = baseCoordinate;
@@ -394,6 +451,12 @@ class PiecewiseConstantGeometryTest {
 		return point;
 	}
 
+	/**
+	 * Compares two vertex lists as text, so that a failure shows both lists.
+	 *
+	 * @param expected the expected vertices
+	 * @param actual   the recorded vertices
+	 */
 	private static void assertVertices(List<double[]> expected, List<double[]> actual) {
 		assertEquals(format(expected), format(actual), "vertex list");
 	}
