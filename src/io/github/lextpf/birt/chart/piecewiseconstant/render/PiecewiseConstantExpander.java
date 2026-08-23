@@ -15,88 +15,110 @@ import java.util.Arrays;
 import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
 
 /**
- * Turns the points of a series into the vertices of a piecewise-constant
- * (staircase) line by inserting a synthetic corner between every pair of
- * connected points.
+ * Expands the data points of one series into the vertices of a piecewise
+ * constant line.
  * <p>
- * The expansion is pure and coordinate-system agnostic: <code>base</code> is the
- * coordinate along the category/base axis and <code>value</code> the coordinate
- * along the value axis, in whatever space the caller works in (typically device
- * pixels). It knows nothing about the chart engine, so it can be unit tested
- * without the platform.
+ * Intent: the stock line renderer draws straight segments between consecutive
+ * vertices. This class inserts one corner vertex per step, so those segments
+ * form treads and steps.
  * <p>
- * The rules are chosen so that the stock line renderer keeps working on the
- * longer arrays:
+ * Constraints: the class does not know the coordinate system. {@code base} holds
+ * the coordinate along the category axis (BIRT: base axis). {@code value} holds
+ * the coordinate along the value axis. Both hold coordinates of the space of the
+ * caller, which is usually device pixels. The class does not use the chart
+ * engine, so a test can call it without a started chart engine.
+ * <p>
+ * Side effects: none.
+ * <p>
+ * Non-obvious behaviour: the following rules keep the stock line renderer
+ * working on the longer arrays.
  * <ul>
- * <li><b>R1</b> - a null point is copied through verbatim and never carries a
- * corner, so the renderer's isolated-point detection still sees the original
- * neighbourhood of every null;</li>
- * <li><b>R2</b> - with <code>connectMissingValue == false</code> a null breaks
- * the run; with <code>true</code> the run continues across the nulls and the
- * corner of the bridged pair is emitted right after its left point, that is
- * before the null run;</li>
- * <li><b>R3</b> - two equal values form a flat step and need no corner;</li>
- * <li><b>R4</b> - the corner geometry follows the {@link StepMode};</li>
- * <li><b>R5</b> - a corner that coincides with the vertex before it or with the
- * point it leads to is dropped (this happens when two points share a base
- * coordinate);</li>
- * <li><b>R6</b> - every original point is emitted, unchanged and in order, and
- * every vertex is attributed to a real, non-null point through
+ * <li><b>R1</b> - the expander copies a missing value through without change and
+ * gives it no corner vertex. The isolated-point detection of the chart engine
+ * therefore still sees the original neighbours of every missing value;</li>
+ * <li><b>R2</b> - if {@code connectMissingValue} is false, then a missing value
+ * ends the run. If it is true, then the run continues across the missing values.
+ * The expander then writes the corner vertex of the bridged pair directly after
+ * its left data point, that is before the missing values;</li>
+ * <li><b>R3</b> - two equal consecutive values stay on one tread and need no
+ * corner vertex;</li>
+ * <li><b>R4</b> - the geometry of the corner vertex follows the
+ * {@link StepMode};</li>
+ * <li><b>R5</b> - the expander drops a corner vertex that is equal to the vertex
+ * before it, or equal to the data point it leads to. This happens if two data
+ * points share one base coordinate;</li>
+ * <li><b>R6</b> - the expander writes every data point, unchanged and in order.
+ * Every corner vertex names a data point that has a value, through
  * {@link PiecewiseConstantExpansion#owner}.</li>
  * </ul>
  */
 public final class PiecewiseConstantExpander {
 
 	/**
-	 * Only static members.
+	 * Blocks instances. The class has only static members.
 	 */
 	private PiecewiseConstantExpander() {
 	}
 
 	/**
-	 * Tells whether a data value counts as missing, exactly as the chart engine's
-	 * <code>BaseRenderer.isNaN(Object)</code> does (which is not visible from
-	 * here).
+	 * Tells whether a data value counts as a missing value.
+	 * <p>
+	 * Intent: the method gives the same answer as {@code BaseRenderer.isNaN(Object)}
+	 * of the chart engine. That method is protected and static, so this class
+	 * cannot call it.
 	 *
 	 * @param v the value taken from a data set
-	 * @return <code>true</code> for <code>null</code> and for a {@link Number} that
-	 *         is <code>NaN</code>
+	 * @return {@code true} for {@code null} and for a {@link Number} that is
+	 *         {@code NaN}; {@code false} for every other value
 	 */
 	public static boolean isNullValue(Object v) {
 		return v == null || (v instanceof Number n && Double.isNaN(n.doubleValue()));
 	}
 
 	/**
-	 * Expands the points of a series into staircase vertices.
+	 * Expands the data points of one series into the vertices of a piecewise
+	 * constant line.
+	 * <p>
+	 * Constraints: {@code base}, {@code value} and {@code isNull} must have the
+	 * same length. The caller must pass the same {@code connectMissingValue} flag
+	 * that the chart engine uses for this series.
+	 * <p>
+	 * Side effects: none. The method allocates new arrays and does not change its
+	 * inputs.
+	 * <p>
+	 * Non-obvious behaviour: a missing value never receives a corner vertex. If two
+	 * consecutive values are equal, then the method inserts no corner vertex.
 	 *
-	 * @param base                the base axis coordinate of every point
-	 * @param value               the value axis coordinate of every point; the
-	 *                            entries of null points are copied through
-	 *                            untouched
-	 * @param isNull              <code>true</code> for every point the renderer
-	 *                            treats as missing
-	 * @param mode                where the line jumps from one value to the next
-	 * @param connectMissingValue whether the renderer connects the points around a
-	 *                            null instead of breaking the run
-	 * @return the expanded vertices; four arrays of the same length
-	 *         <code>m &gt;= base.length</code>
+	 * @param base                the category axis coordinate of every data point
+	 * @param value               the value axis coordinate of every data point; the
+	 *                            method copies the entry of a missing value through
+	 *                            without change
+	 * @param isNull              {@code true} for every data point that the
+	 *                            renderer treats as a missing value
+	 * @param mode                the step mode, which decides where the line steps
+	 *                            from one value to the next
+	 * @param connectMissingValue {@code true} if the renderer connects the data
+	 *                            points around a missing value instead of ending
+	 *                            the run
+	 * @return the vertices; four arrays of the same length
+	 *         {@code m >= base.length}
 	 */
 	public static PiecewiseConstantExpansion expand(double[] base, double[] value, boolean[] isNull, StepMode mode,
 			boolean connectMissingValue) {
 		int n = base.length;
-		// A point contributes itself plus at most two corners (CENTER).
+		// One data point gives one vertex plus at most two corner vertices (Center).
 		Vertices out = new Vertices(3 * n);
 
 		for (int i = 0; i < n; i++) {
-			// R6: the point itself, unchanged and in order.
+			// R6: the data point itself, unchanged and in order.
 			out.point(base[i], value[i], i);
 
-			// R1: nulls are pass-through only, they never carry a corner.
+			// R1: a missing value passes through and never carries a corner vertex.
 			if (isNull[i]) {
 				continue;
 			}
 
-			// R2: the partner the renderer's seeker would connect this point to.
+			// R2: the data point that the stock renderer connects to this one.
 			int right = nextConnected(isNull, i, connectMissingValue);
 			if (right < 0) {
 				continue;
@@ -107,12 +129,13 @@ public final class PiecewiseConstantExpander {
 			double bR = base[right];
 			double vR = value[right];
 
-			// R3: a flat step needs no corner.
+			// R3: two equal values stay on one tread and need no corner vertex.
 			if (vL == vR) {
 				continue;
 			}
 
-			// R4: the corner geometry, owned by the point whose value it carries.
+			// R4: the geometry of the corner vertex. The corner vertex belongs to the
+			// data point whose value it carries.
 			switch (mode) {
 			case AFTER_LITERAL -> out.corner(bR, vL, i, bR, vR);
 			case BEFORE_LITERAL -> out.corner(bL, vR, right, bR, vR);
@@ -128,8 +151,20 @@ public final class PiecewiseConstantExpander {
 	}
 
 	/**
-	 * Returns the index of the point that follows <code>i</code> in the same run,
-	 * or <code>-1</code> when the run ends at <code>i</code> (R2).
+	 * Returns the index of the data point that follows {@code i} in the same run
+	 * (R2).
+	 * <p>
+	 * Non-obvious behaviour: the search copies the data point seeker of the stock
+	 * renderer. If {@code connectMissingValue} is false, then the first missing
+	 * value after {@code i} ends the run.
+	 *
+	 * @param isNull              {@code true} for every data point that the
+	 *                            renderer treats as a missing value
+	 * @param i                   the index of the left data point
+	 * @param connectMissingValue {@code true} if the renderer connects the data
+	 *                            points around a missing value
+	 * @return the index of the next connected data point, or {@code -1} if the run
+	 *         ends at {@code i}
 	 */
 	private static int nextConnected(boolean[] isNull, int i, boolean connectMissingValue) {
 		for (int right = i + 1; right < isNull.length; right++) {
@@ -144,20 +179,36 @@ public final class PiecewiseConstantExpander {
 	}
 
 	/**
-	 * Collects the output vertices and applies the degenerate-corner rule (R5).
+	 * Collects the output vertices and applies the rule for the degenerate corner
+	 * vertex (R5).
+	 * <p>
+	 * Constraints: the caller must append the vertices in drawing order, and must
+	 * not append more vertices than the capacity allows. {@link #corner} compares
+	 * only against the vertex that it appended last.
 	 */
 	private static final class Vertices {
 
+		/** The category axis coordinate of every vertex written so far. */
 		private final double[] base;
 
+		/** The value axis coordinate of every vertex written so far. */
 		private final double[] value;
 
+		/** For every vertex, the index of the data point whose value it carries. */
 		private final int[] owner;
 
+		/** For every vertex, {@code true} for a data point. */
 		private final boolean[] real;
 
+		/** The number of vertices written so far. */
 		private int size;
 
+		/**
+		 * Creates an empty collector.
+		 *
+		 * @param capacity the number of vertices the four arrays can hold; the caller
+		 *                 must not append more vertices than this number
+		 */
 		Vertices(int capacity) {
 			base = new double[capacity];
 			value = new double[capacity];
@@ -166,15 +217,29 @@ public final class PiecewiseConstantExpander {
 		}
 
 		/**
-		 * Appends an original data point.
+		 * Appends one data point.
+		 *
+		 * @param b     the category axis coordinate
+		 * @param v     the value axis coordinate
+		 * @param index the index of the data point in the input arrays
 		 */
 		void point(double b, double v, int index) {
 			append(b, v, index, true);
 		}
 
 		/**
-		 * Appends a synthetic corner unless it coincides with the vertex before it or
-		 * with the point <code>(bRight, vRight)</code> it leads to (R5).
+		 * Appends one corner vertex (R5).
+		 * <p>
+		 * Non-obvious behaviour: the method drops the corner vertex if it is equal to
+		 * the vertex before it. The method also drops it if it is equal to the data
+		 * point {@code (bRight, vRight)} that it leads to.
+		 *
+		 * @param b      the category axis coordinate of the corner vertex
+		 * @param v      the value axis coordinate of the corner vertex
+		 * @param index  the index of the data point whose value the corner vertex
+		 *               carries
+		 * @param bRight the category axis coordinate of the data point it leads to
+		 * @param vRight the value axis coordinate of the data point it leads to
 		 */
 		void corner(double b, double v, int index, double bRight, double vRight) {
 			if (size > 0 && base[size - 1] == b && value[size - 1] == v) {
@@ -186,6 +251,15 @@ public final class PiecewiseConstantExpander {
 			append(b, v, index, false);
 		}
 
+		/**
+		 * Writes one vertex and advances the size.
+		 *
+		 * @param b      the category axis coordinate
+		 * @param v      the value axis coordinate
+		 * @param index  the index of the data point whose value the vertex carries
+		 * @param isReal {@code true} for a data point, {@code false} for a corner
+		 *               vertex
+		 */
 		private void append(double b, double v, int index, boolean isReal) {
 			base[size] = b;
 			value[size] = v;
@@ -195,7 +269,9 @@ public final class PiecewiseConstantExpander {
 		}
 
 		/**
-		 * Returns the vertices, trimmed to their actual length.
+		 * Returns the vertices, cut to their real length.
+		 *
+		 * @return a new expansion that holds copies of the four arrays
 		 */
 		PiecewiseConstantExpansion trim() {
 			return new PiecewiseConstantExpansion(Arrays.copyOf(base, size), Arrays.copyOf(value, size),
