@@ -29,7 +29,17 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstan
 import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
 
 /**
- * An implementation of the model <b>Package</b>.
+ * The implementation of the model <b>Package</b>.
+ * <p>
+ * Intent: the class builds the meta model of the piecewise constant series and
+ * registers it with EMF.
+ * <p>
+ * Constraints: callers must not build this class directly. They read
+ * {@link PiecewiseConstantPackage#eINSTANCE}, which calls {@link #init()}.
+ * <p>
+ * Side effects: {@link #init()} writes the package into the global
+ * {@code EPackage.Registry.INSTANCE}, and it also builds the BIRT model packages
+ * that this package depends on.
  */
 public class PiecewiseConstantPackageImpl extends EPackageImpl implements PiecewiseConstantPackage {
 
@@ -38,13 +48,12 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 	private EEnum stepModeEEnum = null;
 
 	/**
-	 * Creates an instance of the model <b>Package</b>, registered with
-	 * {@link org.eclipse.emf.ecore.EPackage.Registry EPackage.Registry} by the
-	 * package namespace URI.
+	 * Builds the package object and enters it into
+	 * {@link org.eclipse.emf.ecore.EPackage.Registry EPackage.Registry} under the
+	 * namespace URI of the package.
 	 * <p>
-	 * Note: the correct way to create the package is via the static factory method
-	 * {@link #init init()}, which also performs initialization of the package, or
-	 * returns the registered package, if one already exists.
+	 * Constraints: the package is empty after this call. Only {@link #init()} builds
+	 * the meta model, so every caller must use {@link #init()}.
 	 *
 	 * @see org.eclipse.emf.ecore.EPackage.Registry
 	 * @see io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstantPackage#eNS_URI
@@ -57,14 +66,27 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 	private static boolean isInited = false;
 
 	/**
-	 * Creates, registers, and initializes the <b>Package</b> for this model, and
-	 * for any others upon which it depends.
+	 * Builds, registers and initializes the <b>Package</b> of this model, and the
+	 * BIRT packages that this model depends on.
 	 * <p>
-	 * This method is used to initialize {@link PiecewiseConstantPackage#eINSTANCE} when that
-	 * field is accessed. Clients should not invoke it directly. Instead, they
-	 * should simply access that field to obtain the package.
+	 * Intent: the field {@link PiecewiseConstantPackage#eINSTANCE} calls this
+	 * method. Callers must read that field and must not call this method directly.
+	 * <p>
+	 * Constraints: the method builds the meta model on the first call only. Every
+	 * later call returns the registered package.
+	 * <p>
+	 * Side effects: the method puts the package into the global
+	 * {@code EPackage.Registry.INSTANCE}, and it freezes the meta model. A frozen
+	 * meta model is read-only.
+	 * <p>
+	 * Non-obvious behaviour: the method compares the compiled feature id of the step
+	 * mode against the feature count of the {@code LineSeries} of the run time. On a
+	 * mismatch the method throws an {@link IllegalStateException}.
 	 *
 	 * @return the initialized package
+	 * @throws IllegalStateException if the feature count of BIRT's
+	 *                               {@code LineSeries} differs from the count that
+	 *                               this plug-in was compiled against
 	 * @see #eNS_URI
 	 * @see #createPackageContents()
 	 * @see #initializePackageContents()
@@ -74,23 +96,24 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 			return (PiecewiseConstantPackage) EPackage.Registry.INSTANCE.getEPackage(PiecewiseConstantPackage.eNS_URI);
 		}
 
-		// Obtain or create and register package
+		// Take the registered package, or build and register a new one.
 		PiecewiseConstantPackageImpl thePiecewiseConstantPackage = (PiecewiseConstantPackageImpl) (EPackage.Registry.INSTANCE
 				.get(eNS_URI) instanceof PiecewiseConstantPackageImpl ? EPackage.Registry.INSTANCE.get(eNS_URI)
 						: new PiecewiseConstantPackageImpl());
 
 		isInited = true;
 
-		// PIECEWISE_CONSTANT_SERIES__STEP_MODE is compiled from TypePackage.LINE_SERIES_FEATURE_COUNT
-		// and javac inlines that constant, so a chart engine whose LineSeries grew a
-		// feature would silently collide with ours. Compare against the LineSeries
-		// EClass actually present at run time instead.
+		// javac inlines TypePackage.LINE_SERIES_FEATURE_COUNT into
+		// PIECEWISE_CONSTANT_SERIES__STEP_MODE. If the LineSeries of the chart engine
+		// holds one more feature than at compile time, then the two feature ids
+		// collide. The comparison below reads the LineSeries of the run time and stops
+		// the plug-in before the collision damages the data.
 		if (PIECEWISE_CONSTANT_SERIES__STEP_MODE != TypePackage.eINSTANCE.getLineSeries().getFeatureCount()) {
 			throw new IllegalStateException("BIRT chart.engine feature layout changed; rebuild " //$NON-NLS-1$
 					+ "io.github.lextpf.birt.chart.piecewiseconstant against this BIRT version"); //$NON-NLS-1$
 		}
 
-		// Initialize simple dependencies
+		// Build the BIRT packages that this package depends on.
 		AttributePackage.eINSTANCE.eClass();
 		ComponentPackage.eINSTANCE.eClass();
 		DataPackage.eINSTANCE.eClass();
@@ -99,16 +122,16 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 		ModelPackage.eINSTANCE.eClass();
 		XMLTypePackage.eINSTANCE.eClass();
 
-		// Create package meta-data objects
+		// Build the meta objects of this package.
 		thePiecewiseConstantPackage.createPackageContents();
 
-		// Initialize created meta-data
+		// Fill in the meta objects.
 		thePiecewiseConstantPackage.initializePackageContents();
 
-		// Mark meta-data to indicate it can't be changed
+		// Freeze the meta model. It is read-only from here on.
 		thePiecewiseConstantPackage.freeze();
 
-		// Update the registry and return the package
+		// Register the package under its namespace URI and return it.
 		EPackage.Registry.INSTANCE.put(PiecewiseConstantPackage.eNS_URI, thePiecewiseConstantPackage);
 		return thePiecewiseConstantPackage;
 	}
@@ -136,8 +159,11 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 	private boolean isCreated = false;
 
 	/**
-	 * Creates the meta-model objects for the package. This method is guarded to
-	 * have no affect on any invocation but its first.
+	 * Builds the empty meta objects of this package.
+	 * <p>
+	 * Constraints: the method builds the meta objects on the first call only. A
+	 * later call returns at once. {@link #init()} is the only caller in this
+	 * plug-in.
 	 */
 	public void createPackageContents() {
 		if (isCreated) {
@@ -145,19 +171,26 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 		}
 		isCreated = true;
 
-		// Create classes and their features
+		// Build the classes and their features.
 		piecewiseConstantSeriesEClass = createEClass(PIECEWISE_CONSTANT_SERIES);
 		createEAttribute(piecewiseConstantSeriesEClass, PIECEWISE_CONSTANT_SERIES__STEP_MODE);
 
-		// Create enums
+		// Build the enumerations.
 		stepModeEEnum = createEEnum(STEP_MODE);
 	}
 
 	private boolean isInitialized = false;
 
 	/**
-	 * Complete the initialization of the package and its meta-model. This method is
-	 * guarded to have no affect on any invocation but its first.
+	 * Fills in the meta objects of this package.
+	 * <p>
+	 * Constraints: the method does its work on the first call only. A later call
+	 * returns at once. The caller must run {@link #createPackageContents()} first,
+	 * and BIRT's {@code TypePackage} must be registered.
+	 * <p>
+	 * Side effects: the method makes BIRT's <code>LineSeries</code> the supertype of
+	 * the piecewise constant series, and it builds an EMF resource for the namespace
+	 * URI.
 	 */
 	public void initializePackageContents() {
 		if (isInitialized) {
@@ -165,40 +198,46 @@ public class PiecewiseConstantPackageImpl extends EPackageImpl implements Piecew
 		}
 		isInitialized = true;
 
-		// Initialize package
+		// Name the package.
 		setName(eNAME);
 		setNsPrefix(eNS_PREFIX);
 		setNsURI(eNS_URI);
 
-		// Obtain other dependent packages
+		// Take the BIRT type package from the registry.
 		TypePackage theTypePackage = (TypePackage) EPackage.Registry.INSTANCE.getEPackage(TypePackage.eNS_URI);
 
-		// Add supertypes to classes
+		// Make LineSeries the supertype of the piecewise constant series.
 		piecewiseConstantSeriesEClass.getESuperTypes().add(theTypePackage.getLineSeries());
 
-		// Initialize classes and features; add operations and parameters
+		// Fill in the classes and the features.
 		initEClass(piecewiseConstantSeriesEClass, PiecewiseConstantSeries.class, "PiecewiseConstantSeries", !IS_ABSTRACT, !IS_INTERFACE, //$NON-NLS-1$
 				IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getPiecewiseConstantSeries_StepMode(), getStepMode(), "stepMode", "After", 0, 1, PiecewiseConstantSeries.class, //$NON-NLS-1$ //$NON-NLS-2$
 				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		// Initialize enums and add enum literals
+		// Fill in the enumeration and add its literals.
 		initEEnum(stepModeEEnum, StepMode.class, "StepMode"); //$NON-NLS-1$
 		addEEnumLiteral(stepModeEEnum, StepMode.AFTER_LITERAL);
 		addEEnumLiteral(stepModeEEnum, StepMode.BEFORE_LITERAL);
 		addEEnumLiteral(stepModeEEnum, StepMode.CENTER_LITERAL);
 
-		// Create resource
+		// Build the EMF resource of the package.
 		createResource(eNS_URI);
 
-		// Create annotations
+		// Add the annotations that name the XML elements.
 		// http:///org/eclipse/emf/ecore/util/ExtendedMetaData
 		createExtendedMetaDataAnnotations();
 	}
 
 	/**
-	 * Initializes the annotations for
+	 * Adds the annotations of the source
 	 * <b>http:///org/eclipse/emf/ecore/util/ExtendedMetaData</b>.
+	 * <p>
+	 * Intent: these annotations state the names that the serializer writes into the
+	 * chart XML. The class becomes the element <code>PiecewiseConstantSeries</code>,
+	 * and the attribute becomes the child element <code>StepMode</code>.
+	 * <p>
+	 * Constraints: a change to one of these names makes a saved chart unreadable.
 	 */
 	protected void createExtendedMetaDataAnnotations() {
 		String source = "http:///org/eclipse/emf/ecore/util/ExtendedMetaData"; //$NON-NLS-1$
