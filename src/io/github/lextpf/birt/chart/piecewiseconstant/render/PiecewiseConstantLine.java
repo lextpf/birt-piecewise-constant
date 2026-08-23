@@ -27,38 +27,54 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstan
 import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
 
 /**
- * Renders a
- * {@link io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstantSeries}
- * as a piecewise constant line - a staircase, also known as a step line or a
- * zero-order hold.
+ * Draws a {@link PiecewiseConstantSeries} as a piecewise constant line.
  * <p>
- * Registered through the
- * <code>org.eclipse.birt.chart.engine.modelrenderers</code> extension point, so
- * it needs a public no-argument constructor.
+ * Intent: the stock {@link Line} renderer draws a straight segment between two
+ * consecutive entries of its {@code Location[]} array. This renderer inserts one
+ * corner vertex per step into that array. The segments then form the treads and
+ * the steps of the piecewise constant line. This renderer draws nothing itself.
+ * It intercepts the four hooks that receive the laid out device locations,
+ * expands the arrays with {@link PiecewiseConstantExpander} and calls
+ * {@code super}.
  * <p>
- * The renderer draws nothing itself. All the stock {@link Line} renderer needs
- * to draw a staircase is a longer point list, so this class only intercepts the
- * four hooks that receive the already laid out device locations, inserts the
- * staircase corners with {@link PiecewiseConstantExpander} and hands the longer
- * arrays back to <code>super</code>. Everything else - markers, labels, shadows,
- * tooltips, the legend graphic, 3D plane sorting - keeps working unchanged,
- * because the expansion keeps the two arrays in lockstep: the expanded
- * <code>Location[]</code> and <code>DataPointHints[]</code> have the same
- * length and the same index meaning, and every synthetic corner reuses the
- * {@link DataPointHints} of the real data point it belongs to. The stock inner
- * renderers only ever index <code>loa[]</code> by a <code>dpha[]</code> index
- * and never look at the rendering hints object, so longer index aligned arrays
- * are all they need.
+ * Constraints: the chart engine creates this renderer through the
+ * {@code org.eclipse.birt.chart.engine.modelrenderers} extension point. The
+ * class must therefore keep a public constructor without arguments.
+ * <p>
+ * Side effects: none. Each hook builds new arrays and does not change the arrays
+ * of the caller.
+ * <p>
+ * Non-obvious behaviour: the stock renderer indexes the {@code Location[]} array
+ * with the index of the {@code DataPointHints[]} array. Both arrays must
+ * therefore keep the same length and the same index meaning. Every corner vertex
+ * reuses the {@link DataPointHints} of the data point whose value it carries.
+ * The tooltip and the interactivity of a tread therefore belong to that data
+ * point.
+ * <p>
+ * Non-obvious behaviour: {@code Line.renderSeries} draws the markers and the
+ * data point labels from the original arrays, so they stay on the real data
+ * points. The shadow, the legend graphic and the 3D plane sorting also keep
+ * their stock behaviour, because the expansion keeps the two arrays aligned.
  */
 public class PiecewiseConstantLine extends Line {
 
 	/**
 	 * Creates the renderer.
+	 * <p>
+	 * Constraints: the chart engine calls this constructor through the model
+	 * renderer extension point. The constructor must therefore stay public and
+	 * without arguments.
 	 */
 	public PiecewiseConstantLine() {
 		super();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * Intent: this override replaces the laid out vertices with the vertices of
+	 * the piecewise constant line. It then calls {@code super} to draw them.
+	 */
 	@Override
 	protected void renderDataPoints(IPrimitiveRenderer ipr, Plot p, ISeriesRenderingHints srh, DataPointHints[] dpha,
 			LineAttributes lia, Location[] loa, boolean bShowAsTape, double dTapeWidth, Fill paletteEntry,
@@ -68,6 +84,12 @@ public class PiecewiseConstantLine extends Line {
 				usePaletteLineColor);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * Intent: the shadow follows the line, so this override expands the arrays in
+	 * the same way as {@link #renderDataPoints}.
+	 */
 	@Override
 	protected void renderShadow(IPrimitiveRenderer ipr, Plot p, LineAttributes lia, Location[] loa, boolean bShowAsTape,
 			DataPointHints[] dpha) throws ChartException {
@@ -78,12 +100,14 @@ public class PiecewiseConstantLine extends Line {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * A piecewise constant series is constant between its points by definition,
-	 * so a series with <code>curve</code> set must still be drawn as a staircase
-	 * rather than as a spline through its points. The curve path is therefore
-	 * bypassed and routed back into the ordinary data point rendering.
-	 * <code>Line</code> passes the {@link Plot} on to nobody, so
-	 * <code>null</code> is safe here.
+	 * Intent: a piecewise constant series is constant between its data points. A
+	 * series with {@code isCurve()} set must therefore still show treads and
+	 * steps, and not a spline through its data points.
+	 * <p>
+	 * Non-obvious behaviour: {@code Line.renderSeries} calls this hook instead of
+	 * {@link #renderDataPoints} when {@code isCurve()} is true. This override
+	 * sends the call back to {@link #renderDataPoints}. {@code Line} passes the
+	 * {@link Plot} argument on to nobody, so {@code null} is safe here.
 	 */
 	@Override
 	protected void renderAsCurve(IPrimitiveRenderer ipr, LineAttributes lia, ISeriesRenderingHints srh, Location[] loa,
@@ -96,7 +120,7 @@ public class PiecewiseConstantLine extends Line {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * The shadow follows the line, so it takes the same bypass as
+	 * Intent: the shadow follows the line, so this hook takes the same path as
 	 * {@link #renderAsCurve}.
 	 */
 	@Override
@@ -106,17 +130,30 @@ public class PiecewiseConstantLine extends Line {
 	}
 
 	/**
-	 * Inserts the staircase corners into a laid out point list.
+	 * Builds the vertices of the piecewise constant line from a laid out point
+	 * list.
+	 * <p>
+	 * Constraints: {@code dpha} and {@code loa} must have the same length and the
+	 * same index meaning. In 3D every entry of {@code loa} must be a
+	 * {@link Location3D}.
+	 * <p>
+	 * Side effects: none. The method allocates new arrays and does not change its
+	 * inputs.
+	 * <p>
+	 * Non-obvious behaviour: a corner vertex reuses the {@link DataPointHints} of
+	 * the data point whose value it carries. A vertex of a real data point keeps
+	 * the {@link Location} instance of that data point, so the stock renderer sees
+	 * the original object.
 	 *
-	 * @param dpha the data point hints, one per original point
-	 * @param loa  the device locations, index aligned with <code>dpha</code>
-	 * @return the expanded, still index aligned pair of arrays
+	 * @param dpha the data point hints, one entry per data point
+	 * @param loa  the device locations, aligned index by index with {@code dpha}
+	 * @return the two longer arrays, still aligned index by index
 	 */
 	private Expanded expand(DataPointHints[] dpha, Location[] loa) {
 		boolean is3D = isDimension3D();
-		// A 3D chart is never transposed; a transposed 2D chart swaps the roles of
-		// the two device coordinates, which is exactly what Line.Transposition
-		// abstracts over.
+		// The chart engine never transposes a 3D chart. A transposed 2D chart swaps
+		// the device coordinates of the category axis and the value axis.
+		// Line.Transposition hides that swap behind getX, getY and set.
 		boolean transposed = !is3D && ((ChartWithAxes) getModel()).isTransposed();
 		Transposition t = transposed ? Transposition.TRANSPOSED : Transposition.NOT_TRANSPOSED;
 
@@ -136,15 +173,17 @@ public class PiecewiseConstantLine extends Line {
 
 		LineSeries series = (LineSeries) getSeries();
 		StepMode mode = series instanceof PiecewiseConstantSeries step ? step.getStepMode() : StepMode.AFTER_LITERAL;
-		// The expander only emits a corner between points that will actually be
-		// connected, so it has to be told the very flag the stock renderer's data
-		// point seeker is created with.
+		// The expander inserts a corner vertex only between two data points that the
+		// renderer connects. It must therefore receive the same connectMissingValue
+		// flag that the chart engine gives to the data point seeker of the stock
+		// renderer.
 		PiecewiseConstantExpansion x = PiecewiseConstantExpander.expand(base, value, isNull, mode,
 				series.isConnectMissingValue());
 
 		int m = x.owner.length;
-		// LineDataPointsRenderer3D hard casts the array to Location3D[], so in 3D the
-		// array itself - not only its elements - has to have that type.
+		// Line.LineDataPointsRenderer3D casts the whole array to Location3D[]. In 3D
+		// the type of the array itself, and not only the type of its elements, must
+		// therefore be Location3D[].
 		Location[] out = is3D ? new Location3D[m] : new Location[m];
 		DataPointHints[] hints = new DataPointHints[m];
 		for (int k = 0; k < m; k++) {
@@ -165,10 +204,14 @@ public class PiecewiseConstantLine extends Line {
 	}
 
 	/**
-	 * The two index aligned arrays {@link PiecewiseConstantLine#expand} produces.
+	 * The two arrays that {@link PiecewiseConstantLine#expand} returns.
+	 * <p>
+	 * Constraints: both arrays have the same length and the same index meaning.
+	 * The caller must keep that alignment, because the stock renderer indexes
+	 * {@code loa} with an index of {@code dpha}.
 	 *
-	 * @param dpha the data point hints, one per staircase vertex
-	 * @param loa  the device locations of the staircase vertices
+	 * @param dpha the data point hints, one entry per vertex
+	 * @param loa  the device locations of the vertices
 	 */
 	private record Expanded(DataPointHints[] dpha, Location[] loa) {
 	}
