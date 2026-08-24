@@ -340,11 +340,11 @@ Write-Host "                     $($jdk.Banner)"
 Write-Host "  MAVEN_HOME       = $($maven.Path)"
 if ($birtValue -ne '') {
     Write-Host "  BIRT_RUNTIME_DIR = $birtValue"
-    Write-Host '                     RuntimeSmokeIT runs. build.ps1 passes -Dbirt.runtime.dir by itself.'
+    Write-Host '                     RuntimeSmokeIT runs. test.ps1 passes -Dbirt.runtime.dir by itself.'
 }
 else {
     Write-Host '  BIRT_RUNTIME_DIR = (empty). RuntimeSmokeIT stays skipped.'
     Write-Host '                     Pass -BirtRuntimeDir <unpacked birt-runtime> to enable that test.'
 }
 Write-Host ''
-Write-Host 'Next: .\build.ps1 clean verify'
+Write-Host 'Next: .\build.ps1   (build the jar)   .\test.ps1   (run the tests)'
