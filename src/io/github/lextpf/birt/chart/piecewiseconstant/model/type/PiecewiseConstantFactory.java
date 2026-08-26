@@ -14,12 +14,6 @@ import org.eclipse.emf.ecore.EFactory;
 
 /**
  * The EMF <b>Factory</b> of the piecewise constant model.
- * <p>
- * Intent: the factory holds one create method for each class of the model that
- * is not abstract. EMF calls the factory when it reads a series from the chart
- * XML.
- * <p>
- * Side effects: none. The methods build new objects only.
  *
  * @see io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstantPackage
  */
@@ -38,15 +32,8 @@ public interface PiecewiseConstantFactory extends EFactory {
 	 * Non-obvious behaviour: the new series carries no values and no set flags. A
 	 * caller that needs the values of a stock series calls
 	 * {@code PiecewiseConstantSeriesImpl.create()} instead.
-	 *
-	 * @return a new '<em>Piecewise Constant Series</em>'
 	 */
 	PiecewiseConstantSeries createPiecewiseConstantSeries();
 
-	/**
-	 * Returns the package of this factory.
-	 *
-	 * @return the package of this factory
-	 */
 	PiecewiseConstantPackage getPiecewiseConstantPackage();
 }
