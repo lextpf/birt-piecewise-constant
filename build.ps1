@@ -1,9 +1,10 @@
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$MvnArgs)
 
-# Toolchain paths are never hard-coded here. They come from .env next to this script
-# (git-ignored, written by .\setup.ps1) and, if that file is missing, from the process
-# environment. .env wins: it is the project's pinned toolchain, while a machine-wide
-# JAVA_HOME may well point at a different JDK.
+# This script holds no hard-coded toolchain path. The paths come from the .env file next
+# to this script. Git ignores that file, and .\setup.ps1 writes it. If .env is missing,
+# then this script reads the paths from the process environment. .env overrides the
+# process environment: it is the pinned toolchain of the project, and a machine-wide
+# JAVA_HOME often points at a different JDK.
 
 $MinimumJavaMajor = 21
 $EnvFilePath = Join-Path $PSScriptRoot '.env'
@@ -42,25 +43,26 @@ function ConvertTo-CleanPath {
 function Show-ToolchainHelp {
     param([string] $Problem)
 
-    $source = if (Test-Path -LiteralPath $EnvFilePath -PathType Leaf) { $EnvFilePath } else { '(no .env - values read from the environment)' }
+    $source = if (Test-Path -LiteralPath $EnvFilePath -PathType Leaf) { $EnvFilePath } else { '(no .env; the script reads the values from the environment)' }
     Write-Host ''
     Write-Host "build.ps1: $Problem" -ForegroundColor Red
     Write-Host ''
-    Write-Host 'This build needs two paths, and takes them from .env next to build.ps1 (which wins)'
-    Write-Host 'or, when there is no .env, from the process environment:'
+    Write-Host 'This build needs two paths. It reads them from .env next to build.ps1, which'
+    Write-Host 'overrides the process environment. It reads the process environment when there'
+    Write-Host 'is no .env:'
     Write-Host ''
-    Write-Host '  JAVA_HOME         JDK 21 root, must contain bin\java.exe (BIRT 4.24 needs Java 21+)'
-    Write-Host '  MAVEN_HOME        Apache Maven root, must contain bin\mvn.cmd'
-    Write-Host '  BIRT_RUNTIME_DIR  optional; unpacked birt-runtime with ReportEngine\lib, enables RuntimeSmokeIT'
+    Write-Host '  JAVA_HOME         JDK 21 root. It must contain bin\java.exe. BIRT 4.24 needs Java 21 or newer.'
+    Write-Host '  MAVEN_HOME        Apache Maven root. It must contain bin\mvn.cmd.'
+    Write-Host '  BIRT_RUNTIME_DIR  Optional. An unpacked birt-runtime with ReportEngine\lib. It enables RuntimeSmokeIT.'
     Write-Host ''
     Write-Host "  settings source:  $source"
     Write-Host ''
-    Write-Host 'Fix it either way:'
-    Write-Host '  .\setup.ps1                       auto-detects a JDK 21 and Maven and writes the git-ignored .env'
+    Write-Host 'Use one of these three ways to set the paths:'
+    Write-Host '  .\setup.ps1                       detects a JDK 21 and Maven, then writes the git-ignored .env'
     Write-Host '  .\setup.ps1 -JavaHome <path> -MavenHome <path> [-BirtRuntimeDir <path>]'
     Write-Host '  $env:JAVA_HOME = <path>; $env:MAVEN_HOME = <path>     (no .env needed)'
     Write-Host ''
-    Write-Host 'See .env.example for the keys and README.md > Build for the full story.'
+    Write-Host 'See .env.example for the keys, and README.md > Building from source for the details.'
     Write-Host ''
 }
 
@@ -82,14 +84,14 @@ if (-not (Test-Path -LiteralPath $javaExe -PathType Leaf)) {
 $javaOutput = @((& $javaExe -version 2>&1) | ForEach-Object { $_.ToString() })
 $javaMatch = [regex]::Match(($javaOutput -join "`n"), 'version\s+"([^"]+)"')
 if (-not $javaMatch.Success) {
-    Show-ToolchainHelp "Could not read a version from '$javaExe -version'."
+    Show-ToolchainHelp "Cannot read a version from '$javaExe -version'."
     exit 1
 }
 $javaVersion = $javaMatch.Groups[1].Value
 # "21.0.12.1" -> 21, "25.0.3" -> 25, "1.8.0_501" -> 8
 $javaNumbers = @([regex]::Matches($javaVersion, '\d+') | ForEach-Object { [int] $_.Value })
 if ($javaNumbers.Count -eq 0) {
-    Show-ToolchainHelp "Could not parse the Java version '$javaVersion' reported by '$javaExe'."
+    Show-ToolchainHelp "Cannot parse the Java version '$javaVersion' that '$javaExe' reports."
     exit 1
 }
 $javaMajor = if ($javaNumbers[0] -eq 1 -and $javaNumbers.Count -gt 1) { $javaNumbers[1] } else { $javaNumbers[0] }
@@ -116,7 +118,7 @@ $env:Path = "$javaHome\bin;$env:Path"
 $mvnArguments = [string[]]@()
 if ($MvnArgs) { $mvnArguments = @($MvnArgs) }
 
-# A configured runtime should just run RuntimeSmokeIT - unless the caller passed its own.
+# A configured runtime must run RuntimeSmokeIT, unless the caller passed its own value.
 if ($birtRuntimeDir -ne '' -and -not ($mvnArguments | Where-Object { $_ -and $_.StartsWith('-Dbirt.runtime.dir=') })) {
     $mvnArguments += "-Dbirt.runtime.dir=$birtRuntimeDir"
 }
