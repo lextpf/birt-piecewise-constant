@@ -11,49 +11,59 @@
 package io.github.lextpf.birt.chart.piecewiseconstant.render;
 
 /**
- * The staircase vertices produced by
- * {@link PiecewiseConstantExpander#expand(double[], double[], boolean[],
- * io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode, boolean)}.
+ * Holds the vertices of a piecewise constant line.
  * <p>
- * The four arrays have the same length <code>m &gt;= n</code>, one entry per
- * output vertex, in drawing order:
- * <ul>
- * <li><code>base[k]</code> - the coordinate along the category/base axis;</li>
- * <li><code>value[k]</code> - the coordinate along the value axis;</li>
- * <li><code>owner[k]</code> - the index into the original arrays whose value
- * this vertex carries. A vertex is always attributed to a real, non-null data
- * point, so a caller may safely take the tooltip, marker or label data of
- * <code>owner[k]</code> for vertex <code>k</code>;</li>
- * <li><code>real[k]</code> - <code>true</code> for the original data points
- * (which appear unchanged and in their original order), <code>false</code> for
- * the synthetic corners inserted between them.</li>
- * </ul>
+ * Intent: {@link PiecewiseConstantExpander#expand(double[], double[], boolean[],
+ * io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode, boolean)}
+ * returns this object. The renderer reads it to build the longer location array.
  * <p>
- * The class is coordinate-system agnostic: it holds whatever pair of coordinates
- * the caller passed in, typically device-space pixels.
+ * Constraints: the four arrays have the same length {@code m}. This length is
+ * not less than the number of data points. Each array holds one entry per
+ * vertex, in drawing order. The constructor stores the arrays and does not copy
+ * them, so the caller must not change them afterwards.
+ * <p>
+ * Side effects: none.
+ * <p>
+ * Non-obvious behaviour: the class does not know the coordinate system. It holds
+ * the pair of coordinates that the caller passed in, which is usually device
+ * pixels.
  */
 public final class PiecewiseConstantExpansion {
 
-	/** The base (category) axis coordinate of every vertex. */
+	/** The category axis coordinate of every vertex. */
 	public final double[] base;
 
 	/** The value axis coordinate of every vertex. */
 	public final double[] value;
 
-	/** For every vertex, the index of the original point whose value it carries. */
+	/**
+	 * For every vertex, the index of the data point whose value the vertex carries.
+	 * <p>
+	 * Non-obvious behaviour: a corner vertex always names a data point that has a
+	 * value. The renderer can therefore take the data point hints of
+	 * {@code owner[k]} for vertex {@code k}. The tooltip of a tread then belongs to
+	 * a real data point. The vertex of a data point names that data point itself,
+	 * also for a missing value.
+	 */
 	public final int[] owner;
 
-	/** For every vertex, <code>true</code> for an original point. */
+	/**
+	 * For every vertex, {@code true} for a data point and {@code false} for a
+	 * corner vertex. The data points appear unchanged and in their original order.
+	 */
 	public final boolean[] real;
 
 	/**
 	 * Creates an expansion from its four parallel arrays.
+	 * <p>
+	 * Constraints: the four arrays must have the same length. The constructor
+	 * stores the arrays and does not copy them.
 	 *
-	 * @param base  the base axis coordinates
+	 * @param base  the category axis coordinates
 	 * @param value the value axis coordinates
-	 * @param owner the index of the owning original point per vertex
-	 * @param real  <code>true</code> per original point, <code>false</code> per
-	 *              synthetic corner
+	 * @param owner for every vertex, the index of the data point whose value it
+	 *              carries
+	 * @param real  {@code true} for a data point, {@code false} for a corner vertex
 	 */
 	public PiecewiseConstantExpansion(double[] base, double[] value, int[] owner, boolean[] real) {
 		this.base = base;
