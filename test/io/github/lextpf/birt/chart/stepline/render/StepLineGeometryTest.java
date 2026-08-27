@@ -216,7 +216,8 @@ class StepLineGeometryTest {
 		assertEquals(4, step.segments.size(), "markers and labels add no line segments");
 		assertAxisParallel(step.segments);
 		assertEquals(0, step.seriesPointOvals,
-				"a connected run has no isolated point, so the box markers are not drawn as ovals");
+				"a connected run has no isolated point, and the circle markers are filled but never"
+						+ " stroked, so nothing counts as a stroked oval");
 	}
 
 	// ------------------------------------------------------- 13. degenerate
