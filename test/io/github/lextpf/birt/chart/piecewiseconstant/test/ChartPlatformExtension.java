@@ -19,31 +19,50 @@ import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 /**
- * Boots BIRT's POJO platform once per JVM before any test class that needs the
- * extension registry.
+ * Starts the POJO runtime once per JVM, before a test class that needs the
+ * extension registry runs.
  * <p>
- * The {@link PlatformConfig} deliberately carries <em>no</em>
- * {@code STANDALONE} property, so {@code PluginSettings} starts BIRT's POJO
- * {@code ServiceLauncher} and {@link Platform#getExtensionRegistry()} becomes
- * non-null. Only then is it safe to touch
- * {@code org.eclipse.birt.chart.model.impl.SerializerImpl} and
- * {@code org.eclipse.birt.chart.model.util.ChartDynamicExtension}: both cache
- * the list of extension model packages in a static initializer, and that cache
- * would be empty forever if their class initializer ran before start-up. The
- * class is therefore loaded here, after the platform is up.
+ * Intent: the chart engine finds this plug-in only through the extension
+ * registry. A test class gets that registry with {@code @ExtendWith}.
  * <p>
- * {@code Platform.shutdown()} is never called - the platform outlives the test
- * class, and surefire forks a fresh JVM per test class anyway.
+ * Constraints: the {@link PlatformConfig} must not carry the
+ * {@code STANDALONE} property. Without that property {@code PluginSettings}
+ * starts the POJO {@code ServiceLauncher}, and
+ * {@link Platform#getExtensionRegistry()} returns a registry.
+ * <p>
+ * Side effects: the extension starts a runtime that lives as long as the JVM,
+ * and it loads {@code org.eclipse.birt.chart.model.impl.SerializerImpl}. It
+ * never calls {@code Platform.shutdown()}. The runtime outlives the test class,
+ * and surefire forks one JVM per test class.
+ * <p>
+ * Non-obvious behaviour: {@code SerializerImpl} and
+ * {@code org.eclipse.birt.chart.model.util.ChartDynamicExtension} cache the
+ * extension model packages in a static initializer. If a class initializer of
+ * one of them runs before the runtime starts, then that cache stays empty for
+ * the life of the JVM. The extension therefore loads {@code SerializerImpl}
+ * after the runtime is up.
  */
 public class ChartPlatformExtension implements BeforeAllCallback {
 
 	private static boolean started;
 
+	/**
+	 * @param context the JUnit context of the test class, not used
+	 * @throws ClassNotFoundException if {@code SerializerImpl} is not on the
+	 *                                classpath
+	 */
 	@Override
 	public void beforeAll(ExtensionContext context) throws ClassNotFoundException {
 		startPlatform();
 	}
 
+	/**
+	 * Starts the POJO runtime, and returns immediately on every call after the
+	 * first one.
+	 *
+	 * @throws ClassNotFoundException if {@code SerializerImpl} is not on the
+	 *                                classpath
+	 */
 	private static synchronized void startPlatform() throws ClassNotFoundException {
 		if (started) {
 			return;
@@ -54,7 +73,7 @@ public class ChartPlatformExtension implements BeforeAllCallback {
 		ChartEngine.instance(config);
 
 		assertNotNull(Platform.getExtensionRegistry(),
-				"BIRT's POJO platform did not start: Platform.getExtensionRegistry() is null");
+				"the POJO runtime did not start: Platform.getExtensionRegistry() is null");
 
 		Class.forName("org.eclipse.birt.chart.model.impl.SerializerImpl");
 
