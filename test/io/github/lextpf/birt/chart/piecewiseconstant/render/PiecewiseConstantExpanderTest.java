@@ -23,10 +23,15 @@ import org.junit.jupiter.api.Test;
 import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
 
 /**
- * Verifies the pure staircase expansion: the vertex geometry per
- * {@link StepMode}, the treatment of null points under both
- * <code>connectMissingValue</code> settings, and the invariants the BIRT line
- * renderer relies on.
+ * Verifies the expansion of data points into the vertices of a piecewise
+ * constant line.
+ * <p>
+ * The tests cover the vertex geometry of every {@link StepMode}. They also cover
+ * the treatment of a missing value under both <code>connectMissingValue</code>
+ * settings, and the rules that the stock line renderer depends on.
+ * <p>
+ * Constraints: the expansion is pure arithmetic, so these tests need no chart
+ * engine and no runtime.
  */
 class PiecewiseConstantExpanderTest {
 
@@ -38,6 +43,16 @@ class PiecewiseConstantExpanderTest {
 		return new boolean[n];
 	}
 
+	/**
+	 * Compares one expansion with the four expected arrays, and prints all four
+	 * actual arrays if one comparison fails.
+	 *
+	 * @param actual the expansion under test
+	 * @param base   the expected base coordinates
+	 * @param value  the expected value coordinates
+	 * @param owner  the expected owner index per vertex
+	 * @param real   the expected real flag per vertex
+	 */
 	private static void assertExpansion(PiecewiseConstantExpansion actual, double[] base, double[] value, int[] owner,
 			boolean[] real) {
 		String context = "\nactual base   = " + Arrays.toString(actual.base) //
@@ -217,7 +232,7 @@ class PiecewiseConstantExpanderTest {
 			double[] base = new double[n];
 			double[] value = new double[n];
 			boolean[] isNull = new boolean[n];
-			// Device base coordinates are strictly increasing, as they are along an axis.
+			// The base coordinates increase strictly, as they do along a category axis.
 			double b = random.nextInt(5);
 			for (int i = 0; i < n; i++) {
 				base[i] = b;
@@ -249,17 +264,28 @@ class PiecewiseConstantExpanderTest {
 			}
 		}
 
-		// The corpus must be worth checking: plenty of nulls and plenty of corners.
-		assertTrue(nullPoints > 1000, "only " + nullPoints + " null points were generated");
-		assertTrue(corners > 5000, "only " + corners + " corners were generated");
+		// The generated data must exercise both cases: many missing values and many
+		// corner vertices.
+		assertTrue(nullPoints > 1000, "the test generated only " + nullPoints + " missing values");
+		assertTrue(corners > 5000, "the test generated only " + corners + " corner vertices");
 	}
 
 	/**
-	 * Every synthetic corner carries the value of a real, non-null data point.
-	 * Without connectMissingValue a null also breaks the run, so no corner may sit
-	 * next to one there and BIRT's isolated-point detection keeps working. With
-	 * connectMissingValue the seeker skips nulls altogether, which is what lets the
-	 * corner of a bridged pair sit right before the null run.
+	 * Asserts that every corner vertex carries the value of a real data point that
+	 * is not a missing value.
+	 * <p>
+	 * If <code>connectMissingValue</code> is false, then a missing value also
+	 * breaks the run. No corner vertex can then stand next to a missing value, and
+	 * the detection of isolated data points in the chart engine keeps working. If
+	 * <code>connectMissingValue</code> is true, then the data point seeker skips
+	 * every missing value. The corner vertex of a bridged pair can then stand
+	 * directly before the run of missing values.
+	 *
+	 * @param out                 the expansion under test
+	 * @param isNull              one flag per input point, true for a missing
+	 *                            value
+	 * @param connectMissingValue the flag the expansion ran with
+	 * @param context             the input and output text of the failure message
 	 */
 	private static void assertCornersBelongToRealPoints(PiecewiseConstantExpansion out, boolean[] isNull,
 			boolean connectMissingValue, String context) {
@@ -269,20 +295,26 @@ class PiecewiseConstantExpanderTest {
 			if (out.real[k]) {
 				continue;
 			}
-			assertFalse(isNull[out.owner[k]], "corner " + k + " is owned by a null point; " + context);
+			assertFalse(isNull[out.owner[k]], "corner vertex " + k + " belongs to a missing value; " + context);
 			if (connectMissingValue) {
 				continue;
 			}
 			assertFalse(k > 0 && isNullVertex(out, k - 1, isNull),
-					"corner " + k + " follows a null point; " + context);
+					"corner vertex " + k + " follows a missing value; " + context);
 			assertFalse(k + 1 < out.base.length && isNullVertex(out, k + 1, isNull),
-					"corner " + k + " precedes a null point; " + context);
+					"corner vertex " + k + " precedes a missing value; " + context);
 		}
 	}
 
 	/**
-	 * Every pair of vertices the renderer's seeker would join is axis parallel: the
-	 * two vertices differ in exactly one coordinate.
+	 * Asserts that every pair of vertices that the data point seeker joins is axis
+	 * parallel. Two such vertices differ in exactly one coordinate.
+	 *
+	 * @param out                 the expansion under test
+	 * @param isNull              one flag per input point, true for a missing
+	 *                            value
+	 * @param connectMissingValue the flag the expansion ran with
+	 * @param context             the input and output text of the failure message
 	 */
 	private static void assertConnectedSegmentsAreAxisParallel(PiecewiseConstantExpansion out, boolean[] isNull,
 			boolean connectMissingValue, String context) {
@@ -290,7 +322,8 @@ class PiecewiseConstantExpanderTest {
 		boolean runBroken = false;
 		for (int k = 0; k < out.base.length; k++) {
 			if (isNullVertex(out, k, isNull)) {
-				// A null is a gap; without connectMissingValue it also starts a new run.
+				// The renderer draws no segment to a missing value. If connectMissingValue
+				// is false, then a missing value also starts a new run.
 				runBroken |= !connectMissingValue;
 				continue;
 			}
@@ -305,7 +338,15 @@ class PiecewiseConstantExpanderTest {
 		}
 	}
 
-	/** The real vertices are the input points, unchanged and in order. */
+	/**
+	 * Asserts that the real vertices are the input points, unchanged and in the
+	 * input order.
+	 *
+	 * @param out     the expansion under test
+	 * @param base    the base coordinates of the input points
+	 * @param value   the value coordinates of the input points
+	 * @param context the input and output text of the failure message
+	 */
 	private static void assertRealVerticesAreTheInput(PiecewiseConstantExpansion out, double[] base, double[] value,
 			String context) {
 		double[] realBase = new double[base.length];
@@ -330,6 +371,13 @@ class PiecewiseConstantExpanderTest {
 		assertArrayEquals(expectedOwner, realOwner, "real owner sequence; " + context);
 	}
 
+	/**
+	 * @param out    the expansion under test
+	 * @param k      the index of one vertex
+	 * @param isNull one flag per input point, true for a missing value
+	 * @return {@code true} if the vertex is a real data point and that data point
+	 *         is a missing value
+	 */
 	private static boolean isNullVertex(PiecewiseConstantExpansion out, int k, boolean[] isNull) {
 		return out.real[k] && isNull[out.owner[k]];
 	}
