@@ -101,7 +101,7 @@ function Show-ToolchainHelp {
     Write-Host '  .\setup.ps1 -JavaHome <path> -MavenHome <path> [-BirtRuntimeDir <path>]'
     Write-Host '  $env:JAVA_HOME = <path>; $env:MAVEN_HOME = <path>     (no .env needed)'
     Write-Host ''
-    Write-Host 'See .env.example for the keys, and README.md > Building from source for the details.'
+    Write-Host 'See .env.example for the keys, and README.md > Build from source for the details.'
     Write-Host ''
 }
 
