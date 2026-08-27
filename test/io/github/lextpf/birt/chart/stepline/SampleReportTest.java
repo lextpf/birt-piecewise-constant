@@ -29,6 +29,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.birt.chart.model.Chart;
 import org.eclipse.birt.chart.model.ChartWithAxes;
+import org.eclipse.birt.chart.model.attribute.Bounds;
 import org.eclipse.birt.chart.model.component.Axis;
 import org.eclipse.birt.chart.model.component.Series;
 import org.eclipse.birt.chart.model.impl.SerializerImpl;
@@ -92,6 +93,11 @@ class SampleReportTest {
 		assertEquals(List.of("category", "value"), columnNames(dataSet),
 				"the data set must expose exactly the two columns the chart binds to");
 
+		assertEquals(List.of("resultSetHints", "columnHints"), listPropertyNames(dataSet),
+				"the ROM defines no \"resultSet\" on script-data-set - only oda-data-set and joint-data-set have one."
+						+ " ListPropertyState skips the undefined-property error for that name but leaves the property"
+						+ " definition null, so DesignReader dies with a NullPointerException in StructureState");
+
 		String fetch = methodBody(dataSet, "fetch");
 		assertTrue(fetch.contains("i < 5"), "the data set must produce five rows, but fetch reads:\n" + fetch);
 		assertTrue(fetch.contains("row[\"category\"]") && fetch.contains("row[\"value\"]"),
@@ -143,6 +149,13 @@ class SampleReportTest {
 		assertEquals("row[\"value\"]", valueSeries.getDataDefinition().get(0).getDefinition());
 		assertTrue(categorySeries.getDataSet() == null && valueSeries.getDataSet() == null,
 				"a report chart takes its data from the report, not from an inline data set");
+
+		// ChartReportItemPresentationBase.onRowSets returns null - an empty <div> in
+		// the HTML, no error anywhere - when the outermost block is explicitly sized
+		// 0 x 0, so the sample has to carry the item's size here.
+		Bounds bounds = chart.getBlock().getBounds();
+		assertEquals(400.0, bounds.getWidth(), 0.0, "the chart block must carry the report item's width");
+		assertEquals(250.0, bounds.getHeight(), 0.0, "the chart block must carry the report item's height");
 	}
 
 	/** @return the raw chart XML out of the {@code xmlRepresentation} CDATA */
@@ -179,6 +192,17 @@ class SampleReportTest {
 			}
 		}
 		throw new AssertionError("no property named " + name + " on <" + parent.getNodeName() + ">");
+	}
+
+	/** @return the names of the {@code <list-property>} children, in document order */
+	private static List<String> listPropertyNames(Element parent) {
+		List<String> names = new ArrayList<>();
+		for (Element list : elements(parent.getChildNodes())) {
+			if ("list-property".equals(list.getNodeName())) {
+				names.add(list.getAttribute("name"));
+			}
+		}
+		return names;
 	}
 
 	/** @return the column names the data set declares in its result set hints */
