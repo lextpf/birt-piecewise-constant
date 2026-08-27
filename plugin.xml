@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension point="org.eclipse.birt.chart.engine.modelrenderers">
+      <modelRenderer renderer="io.github.lextpf.birt.chart.stepline.render.StepLine"
+                     series="io.github.lextpf.birt.chart.stepline.model.type.impl.StepLineSeriesImpl"/>
+   </extension>
+   <extension point="org.eclipse.birt.chart.engine.datasetprocessors">
+      <datasetProcessor processor="org.eclipse.birt.chart.extension.datafeed.DataSetProcessorImpl"
+                        series="io.github.lextpf.birt.chart.stepline.model.type.impl.StepLineSeriesImpl"/>
+   </extension>
+   <extension point="org.eclipse.birt.chart.engine.charttypes">
+      <chartType namespaceURI="http://lextpf.github.io/birt/chart/StepLineModelType"
+                 modelLoader="io.github.lextpf.birt.chart.stepline.model.StepLineModelLoader"/>
+   </extension>
+</plugin>
