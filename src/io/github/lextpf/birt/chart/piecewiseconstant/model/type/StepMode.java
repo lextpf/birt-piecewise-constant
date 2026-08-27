@@ -17,87 +17,100 @@ import java.util.List;
 import org.eclipse.emf.common.util.Enumerator;
 
 /**
- * A representation of the literals of the enumeration '<em><b>Step Mode</b></em>',
- * and utility methods for working with them.
+ * The literals of the enumeration '<em><b>Step Mode</b></em>', and the methods
+ * that look up one literal.
  * <p>
- * The mode decides where the piecewise constant line jumps from one value to
- * the next. The names of the literals are kept as they are; the scientific
- * synonyms for each of them are given alongside:
+ * Intent: the step mode states where the piecewise constant series puts the step
+ * between two consecutive values. The renderer places the corner vertex from
+ * this choice.
+ * <p>
+ * Constraints: the literal string of each mode goes into the chart XML. If a
+ * literal name changes, then the chart engine cannot read a chart that holds the
+ * old name.
+ * <p>
+ * Side effects: none.
+ * <p>
+ * Non-obvious behaviour: each mode has an exact mathematical meaning.
  * <ul>
- * <li><b>After</b> - hold each value until the next point's position: the jump
- * happens at the <em>next</em> point. This is the <em>zero-order hold</em>, or
- * <em>sample-and-hold</em>: the right-continuous (c&agrave;dl&agrave;g) step
- * function.</li>
- * <li><b>Before</b> - jump to the next value at the current position: the value
- * of a point is already in force when the previous point is left. This is the
- * <em>left-continuous step</em>.</li>
- * <li><b>Center</b> - step halfway between two points; on a category axis that
- * half-way position is the category boundary. This is the <em>midpoint
- * step</em>.</li>
+ * <li><b>After</b> - the series holds each value until the position of the next
+ * point. The step is at the next point. The function is right-continuous
+ * (c&agrave;dl&agrave;g).</li>
+ * <li><b>Before</b> - the series takes the value of a point already at the
+ * position of the previous point. The function is left-continuous.</li>
+ * <li><b>Center</b> - the step is halfway between two points. On a category axis
+ * this position is the category boundary.</li>
  * </ul>
  *
  * @see io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstantPackage#getStepMode()
  */
 public enum StepMode implements Enumerator {
 	/**
-	 * The '<em><b>After</b></em>' literal object: hold each value until the next
-	 * point's position - the zero-order hold, or sample-and-hold, the
-	 * right-continuous (c&agrave;dl&agrave;g) step function.
+	 * The '<em><b>After</b></em>' literal object. The series holds each value until
+	 * the position of the next point. The function is right-continuous
+	 * (c&agrave;dl&agrave;g). This mode is the default step mode.
 	 *
 	 * @see #AFTER
 	 */
 	AFTER_LITERAL(0, "After", "After"), //$NON-NLS-1$ //$NON-NLS-2$
 	/**
-	 * The '<em><b>Before</b></em>' literal object: jump to the next value at the
-	 * current position - the left-continuous step.
+	 * The '<em><b>Before</b></em>' literal object. The series takes the value of a
+	 * point already at the position of the previous point. The function is
+	 * left-continuous.
 	 *
 	 * @see #BEFORE
 	 */
 	BEFORE_LITERAL(1, "Before", "Before"), //$NON-NLS-1$ //$NON-NLS-2$
 	/**
-	 * The '<em><b>Center</b></em>' literal object: step halfway between points -
-	 * the midpoint step; on a category axis this is the category boundary.
+	 * The '<em><b>Center</b></em>' literal object. The step is halfway between two
+	 * points. On a category axis this position is the category boundary.
 	 *
 	 * @see #CENTER
 	 */
 	CENTER_LITERAL(2, "Center", "Center"); //$NON-NLS-1$ //$NON-NLS-2$
 
 	/**
-	 * The '<em><b>After</b></em>' literal value.
+	 * The integer value of the '<em><b>After</b></em>' literal. EMF stores this
+	 * value in the meta model.
 	 *
 	 * @see #AFTER_LITERAL
 	 */
 	public static final int AFTER = 0;
 
 	/**
-	 * The '<em><b>Before</b></em>' literal value.
+	 * The integer value of the '<em><b>Before</b></em>' literal. EMF stores this
+	 * value in the meta model.
 	 *
 	 * @see #BEFORE_LITERAL
 	 */
 	public static final int BEFORE = 1;
 
 	/**
-	 * The '<em><b>Center</b></em>' literal value.
+	 * The integer value of the '<em><b>Center</b></em>' literal. EMF stores this
+	 * value in the meta model.
 	 *
 	 * @see #CENTER_LITERAL
 	 */
 	public static final int CENTER = 2;
 
 	/**
-	 * An array of all the '<em><b>Step Mode</b></em>' enumerators.
+	 * All '<em><b>Step Mode</b></em>' literals, in the order of their integer
+	 * values. The lookup methods of this class read this array.
 	 */
 	private static final StepMode[] VALUES_ARRAY = { AFTER_LITERAL, BEFORE_LITERAL, CENTER_LITERAL, };
 
 	/**
-	 * A public read-only list of all the '<em><b>Step Mode</b></em>' enumerators.
+	 * All '<em><b>Step Mode</b></em>' literals as a read-only list. EMF reads this
+	 * list when it builds the enumeration of the meta model.
 	 */
 	public static final List<StepMode> VALUES = Collections.unmodifiableList(Arrays.asList(VALUES_ARRAY));
 
 	/**
-	 * Returns the '<em><b>Step Mode</b></em>' literal with the specified literal
-	 * value.
+	 * Returns the '<em><b>Step Mode</b></em>' literal with the given literal string.
+	 * <p>
+	 * Constraints: the comparison is case-sensitive. If no literal matches, then the
+	 * method returns <code>null</code>.
 	 *
-	 * @param literal the literal, as written in the chart XML
+	 * @param literal the literal string, as written in the chart XML
 	 * @return the matching literal object, or <code>null</code>
 	 */
 	public static StepMode get(String literal) {
@@ -111,9 +124,12 @@ public enum StepMode implements Enumerator {
 	}
 
 	/**
-	 * Returns the '<em><b>Step Mode</b></em>' literal with the specified name.
+	 * Returns the '<em><b>Step Mode</b></em>' literal with the given name.
+	 * <p>
+	 * Constraints: the comparison is case-sensitive. If no literal matches, then the
+	 * method returns <code>null</code>.
 	 *
-	 * @param name the enumerator name
+	 * @param name the name of the literal
 	 * @return the matching literal object, or <code>null</code>
 	 */
 	public static StepMode getByName(String name) {
@@ -127,10 +143,12 @@ public enum StepMode implements Enumerator {
 	}
 
 	/**
-	 * Returns the '<em><b>Step Mode</b></em>' literal with the specified integer
-	 * value.
+	 * Returns the '<em><b>Step Mode</b></em>' literal with the given integer value.
+	 * <p>
+	 * Constraints: if no literal has this value, then the method returns
+	 * <code>null</code>.
 	 *
-	 * @param value the enumerator value
+	 * @param value the integer value of the literal
 	 * @return the matching literal object, or <code>null</code>
 	 */
 	public static StepMode get(int value) {
@@ -153,7 +171,12 @@ public enum StepMode implements Enumerator {
 	private final String literal;
 
 	/**
-	 * Only this class can construct instances.
+	 * Builds one literal. Only the literal declarations above can call this
+	 * constructor.
+	 *
+	 * @param value   the integer value of the literal
+	 * @param name    the name of the literal
+	 * @param literal the literal string, as written in the chart XML
 	 */
 	StepMode(int value, String name, String literal) {
 		this.value = value;
@@ -177,8 +200,10 @@ public enum StepMode implements Enumerator {
 	}
 
 	/**
-	 * Returns the literal value of the enumerator, which is its string
-	 * representation.
+	 * Returns the literal string of this mode. The EMF serializer writes this string
+	 * into the chart XML.
+	 *
+	 * @return the literal string
 	 */
 	@Override
 	public String toString() {
