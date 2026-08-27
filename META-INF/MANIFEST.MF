@@ -1,16 +1,16 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: BIRT Chart Step Line Series
-Bundle-SymbolicName: io.github.lextpf.birt.chart.stepline;singleton:=true
+Bundle-Name: BIRT Chart Piecewise Constant Series
+Bundle-SymbolicName: io.github.lextpf.birt.chart.piecewiseconstant;singleton:=true
 Bundle-Version: 1.0.0
 Bundle-Vendor: lextpf
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Require-Bundle: org.eclipse.birt.chart.engine;bundle-version="[4.24.0,5.0.0)",
  org.eclipse.birt.chart.engine.extension;bundle-version="[2.6.0,5.0.0)"
-Export-Package: io.github.lextpf.birt.chart.stepline,
- io.github.lextpf.birt.chart.stepline.model,
- io.github.lextpf.birt.chart.stepline.model.type,
- io.github.lextpf.birt.chart.stepline.model.type.impl,
- io.github.lextpf.birt.chart.stepline.render
+Export-Package: io.github.lextpf.birt.chart.piecewiseconstant,
+ io.github.lextpf.birt.chart.piecewiseconstant.model,
+ io.github.lextpf.birt.chart.piecewiseconstant.model.type,
+ io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl,
+ io.github.lextpf.birt.chart.piecewiseconstant.render
 Bundle-ActivationPolicy: lazy
-Automatic-Module-Name: io.github.lextpf.birt.chart.stepline
+Automatic-Module-Name: io.github.lextpf.birt.chart.piecewiseconstant

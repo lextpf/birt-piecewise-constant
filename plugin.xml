@@ -2,15 +2,15 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension point="org.eclipse.birt.chart.engine.modelrenderers">
-      <modelRenderer renderer="io.github.lextpf.birt.chart.stepline.render.StepLine"
-                     series="io.github.lextpf.birt.chart.stepline.model.type.impl.StepLineSeriesImpl"/>
+      <modelRenderer renderer="io.github.lextpf.birt.chart.piecewiseconstant.render.PiecewiseConstantLine"
+                     series="io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl"/>
    </extension>
    <extension point="org.eclipse.birt.chart.engine.datasetprocessors">
       <datasetProcessor processor="org.eclipse.birt.chart.extension.datafeed.DataSetProcessorImpl"
-                        series="io.github.lextpf.birt.chart.stepline.model.type.impl.StepLineSeriesImpl"/>
+                        series="io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl"/>
    </extension>
    <extension point="org.eclipse.birt.chart.engine.charttypes">
-      <chartType namespaceURI="http://lextpf.github.io/birt/chart/StepLineModelType"
-                 modelLoader="io.github.lextpf.birt.chart.stepline.model.StepLineModelLoader"/>
+      <chartType namespaceURI="http://lextpf.github.io/birt/chart/PiecewiseConstantModelType"
+                 modelLoader="io.github.lextpf.birt.chart.piecewiseconstant.model.PiecewiseConstantModelLoader"/>
    </extension>
 </plugin>
