@@ -10,8 +10,8 @@
   <packaging>jar</packaging>
 
   <name>BIRT Chart Piecewise Constant Series</name>
-  <description>Piecewise constant (step line / staircase / zero-order hold) line series extension for the
-    BIRT chart engine.</description>
+  <description>Piecewise constant line series plug-in for the BIRT chart engine. The renderer holds
+    each value until the step to the next data point, so the line is a run of treads and steps.</description>
   <url>https://github.com/lextpf/birt-piecewise-constant</url>
 
   <licenses>
