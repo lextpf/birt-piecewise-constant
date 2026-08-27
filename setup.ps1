@@ -1,29 +1,34 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Writes the git-ignored .env that build.ps1 reads for this project's toolchain.
+    Writes the git-ignored .env file that build.ps1 reads for the toolchain of this project.
 
 .DESCRIPTION
-    Detects a JDK 21 and an Apache Maven installation (and, optionally, an unpacked
-    BIRT runtime), validates them, and writes JAVA_HOME / MAVEN_HOME / BIRT_RUNTIME_DIR
-    to .env next to this script. .env is git-ignored, so no machine-specific path ever
-    reaches the repository; .env.example documents the keys.
+    This script detects a JDK 21 and an Apache Maven installation. It also accepts an
+    unpacked BIRT runtime. It validates each path. It then writes JAVA_HOME, MAVEN_HOME
+    and BIRT_RUNTIME_DIR to the .env file next to this script.
+
+    Git ignores .env, so no machine-specific path reaches the repository. The file
+    .env.example documents the keys.
 
 .PARAMETER JavaHome
-    JDK 21 installation root (must contain bin\java.exe). Auto-detected when omitted.
+    JDK 21 installation root. It must contain bin\java.exe.
+    The script detects this path when you omit the parameter.
 
 .PARAMETER MavenHome
-    Apache Maven installation root (must contain bin\mvn.cmd). Auto-detected when omitted.
+    Apache Maven installation root. It must contain bin\mvn.cmd.
+    The script detects this path when you omit the parameter.
 
 .PARAMETER BirtRuntimeDir
-    Unpacked birt-runtime-4.24.0 directory (the one containing ReportEngine\lib).
-    Optional; enables RuntimeSmokeIT. Never guessed - pass it or set $env:BIRT_RUNTIME_DIR.
+    The unpacked birt-runtime-4.24.0 directory that contains ReportEngine\lib.
+    This parameter is optional, and a value enables RuntimeSmokeIT. The script never
+    guesses this path. You must pass it, or you must set $env:BIRT_RUNTIME_DIR.
 
 .PARAMETER NonInteractive
-    Never prompt. Exit 1 with a message naming the parameter to pass instead.
+    The script never prompts. It exits with code 1 and names the parameter to pass.
 
 .PARAMETER Force
-    Overwrite an existing .env without asking.
+    The script overwrites an existing .env file without a question.
 
 .EXAMPLE
     .\setup.ps1
@@ -42,7 +47,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# BIRT 4.24 targets Java 21; anything older cannot run the build.
+# BIRT 4.24 targets Java 21. An older JDK cannot run this build.
 $MinimumJavaMajor = 21
 $PreferredJavaMajor = 21
 
@@ -56,8 +61,8 @@ function ConvertTo-CleanPath {
     return $trimmed
 }
 
-# Runs <path>\bin\java.exe -version and returns its path, raw version string and major
-# version - or $null when the path is not a usable Java installation.
+# Runs <path>\bin\java.exe -version. Returns the path, the raw version string and the
+# major version. Returns $null when the path is not a usable Java installation.
 function Get-JdkInfo {
     param([string] $Path)
 
@@ -93,7 +98,8 @@ function Get-JdkInfo {
     }
 }
 
-# Candidate JAVA_HOME values, most trusted first.
+# Collects the candidate JAVA_HOME values, most trusted first, and returns the first
+# usable one.
 function Get-JavaHomeCandidate {
     param([string] $Explicit)
 
@@ -113,11 +119,12 @@ function Get-JavaHomeCandidate {
                 }
         }
         catch {
-            Write-Verbose "Could not read $registryRoot : $($_.Exception.Message)"
+            Write-Verbose "Cannot read $registryRoot : $($_.Exception.Message)"
         }
     }
 
-    # Usual install roots, derived from the environment so no absolute path is baked in here.
+    # The usual install roots. The script derives them from the environment, so this
+    # file holds no absolute path.
     $searchRoots = [System.Collections.Generic.List[string]]::new()
     foreach ($programFiles in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
         if ([string]::IsNullOrWhiteSpace($programFiles)) { continue }
@@ -145,7 +152,7 @@ function Get-JavaHomeCandidate {
         if ($null -ne $info -and $info.Major -ge $MinimumJavaMajor) { $usable.Add($info) }
     }
 
-    # BIRT 4.24 is built for Java 21 - prefer an exact 21.x over anything newer.
+    # BIRT 4.24 targets Java 21. Prefer an exact 21.x over a newer JDK.
     $exact = $usable | Where-Object { $_.Major -eq $PreferredJavaMajor } | Select-Object -First 1
     if ($exact) { return $exact }
     return ($usable | Select-Object -First 1)
@@ -204,9 +211,9 @@ function Read-ValidatedValue {
 
     if ($NonInteractive) {
         Write-Host ''
-        Write-Host "setup.ps1: could not determine $ParameterName." -ForegroundColor Red
+        Write-Host "setup.ps1: cannot determine $ParameterName." -ForegroundColor Red
         Write-Host "  $Requirement"
-        Write-Host "  Re-run with -$ParameterName <path> (running non-interactively, so no prompt)."
+        Write-Host "  Run setup.ps1 again with -$ParameterName <path>. This run is non-interactive, so it does not prompt."
         exit 1
     }
 
@@ -218,7 +225,7 @@ function Read-ValidatedValue {
         }
         $result = & $Validator $answer
         if ($null -ne $result) { return $result }
-        Write-Host "  Not usable: $answer" -ForegroundColor Yellow
+        Write-Host "  This path is not usable: $answer" -ForegroundColor Yellow
         Write-Host "  $Requirement" -ForegroundColor Yellow
     }
 }
@@ -231,11 +238,11 @@ Write-Host 'Detecting toolchain...'
 if (-not [string]::IsNullOrWhiteSpace($JavaHome)) {
     $jdk = Get-JdkInfo $JavaHome
     if ($null -eq $jdk) {
-        Write-Host "setup.ps1: -JavaHome '$JavaHome' has no bin\java.exe (or java did not run)." -ForegroundColor Red
+        Write-Host "setup.ps1: -JavaHome '$JavaHome' has no bin\java.exe, or java did not run." -ForegroundColor Red
         exit 1
     }
     if ($jdk.Major -lt $MinimumJavaMajor) {
-        Write-Host "setup.ps1: -JavaHome '$JavaHome' is Java $($jdk.Major) ($($jdk.Version)); BIRT 4.24 needs Java $MinimumJavaMajor or newer." -ForegroundColor Red
+        Write-Host "setup.ps1: -JavaHome '$JavaHome' is Java $($jdk.Major) ($($jdk.Version)). BIRT 4.24 needs Java $MinimumJavaMajor or newer." -ForegroundColor Red
         exit 1
     }
 }
@@ -279,7 +286,7 @@ if ($null -eq $maven) {
 }
 
 # --------------------------------------------------------------------------------------
-# BIRT_RUNTIME_DIR (optional - never guessed)
+# BIRT_RUNTIME_DIR (optional; the script never guesses it)
 # --------------------------------------------------------------------------------------
 $birt = $null
 if (-not [string]::IsNullOrWhiteSpace($BirtRuntimeDir)) {
@@ -292,7 +299,7 @@ if (-not [string]::IsNullOrWhiteSpace($BirtRuntimeDir)) {
 elseif (-not [string]::IsNullOrWhiteSpace($env:BIRT_RUNTIME_DIR)) {
     $birt = Get-BirtRuntimeInfo $env:BIRT_RUNTIME_DIR
     if ($null -eq $birt) {
-        Write-Warning "`$env:BIRT_RUNTIME_DIR does not contain ReportEngine\lib - leaving BIRT_RUNTIME_DIR empty."
+        Write-Warning "`$env:BIRT_RUNTIME_DIR does not contain ReportEngine\lib. The script leaves BIRT_RUNTIME_DIR empty."
     }
 }
 
@@ -302,12 +309,12 @@ elseif (-not [string]::IsNullOrWhiteSpace($env:BIRT_RUNTIME_DIR)) {
 if ((Test-Path -LiteralPath $EnvFilePath -PathType Leaf) -and -not $Force) {
     if ($NonInteractive) {
         Write-Host ''
-        Write-Host "setup.ps1: .env already exists. Re-run with -Force to overwrite it." -ForegroundColor Red
+        Write-Host "setup.ps1: .env already exists. Run setup.ps1 again with -Force to overwrite it." -ForegroundColor Red
         exit 1
     }
     $answer = Read-Host '.env already exists. Overwrite it? [y/N]'
     if ($answer -notmatch '^(y|yes)$') {
-        Write-Host 'Aborted; .env left unchanged.'
+        Write-Host 'Stopped. The script did not change .env.'
         exit 1
     }
 }
@@ -315,9 +322,9 @@ if ((Test-Path -LiteralPath $EnvFilePath -PathType Leaf) -and -not $Force) {
 $birtValue = if ($null -ne $birt) { $birt.Path } else { '' }
 
 $lines = @(
-    '# Generated by setup.ps1 - this file is git-ignored and must stay that way.',
-    '# It pins the toolchain for build.ps1 and wins over the process environment.',
-    '# See .env.example for what the keys mean. Re-run .\setup.ps1 -Force to regenerate.',
+    '# setup.ps1 generated this file. Git ignores it, and it must stay that way.',
+    '# The file pins the toolchain for build.ps1 and overrides the process environment.',
+    '# See .env.example for the meaning of the keys. Run .\setup.ps1 -Force to write it again.',
     "JAVA_HOME=$($jdk.Path)",
     "MAVEN_HOME=$($maven.Path)",
     "BIRT_RUNTIME_DIR=$birtValue"
@@ -333,11 +340,11 @@ Write-Host "                     $($jdk.Banner)"
 Write-Host "  MAVEN_HOME       = $($maven.Path)"
 if ($birtValue -ne '') {
     Write-Host "  BIRT_RUNTIME_DIR = $birtValue"
-    Write-Host '                     RuntimeSmokeIT will run; build.ps1 passes -Dbirt.runtime.dir automatically.'
+    Write-Host '                     RuntimeSmokeIT runs. build.ps1 passes -Dbirt.runtime.dir by itself.'
 }
 else {
-    Write-Host '  BIRT_RUNTIME_DIR = (empty) - RuntimeSmokeIT stays skipped.'
-    Write-Host '                     Pass -BirtRuntimeDir <unpacked birt-runtime> to enable it.'
+    Write-Host '  BIRT_RUNTIME_DIR = (empty). RuntimeSmokeIT stays skipped.'
+    Write-Host '                     Pass -BirtRuntimeDir <unpacked birt-runtime> to enable that test.'
 }
 Write-Host ''
 Write-Host 'Next: .\build.ps1 clean verify'
