@@ -32,44 +32,50 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import io.github.lextpf.birt.chart.piecewiseconstant.test.CapturingPngRenderer;
 
 /**
- * Runs {@code piecewise-constant-sample.rptdesign} through a real, unpacked BIRT report
- * runtime and checks that the piecewise constant chart comes out as SVG.
+ * Runs {@code piecewise-constant-sample.rptdesign} through an unpacked POJO
+ * runtime, and checks that the piecewise constant chart comes out as SVG.
  * <p>
- * This is the end-to-end proof that the bundle is a well formed BIRT plug-in:
- * the report engine is loaded from the distribution's own jars in a separate
- * {@link URLClassLoader} whose parent is the platform class loader, so
- * <em>nothing</em> of this module's own test classpath can leak into it. The
- * only extra entry on that class loader is our bundle jar; BIRT's POJO
- * {@code ServiceLauncher} finds it by scanning the class loader for
- * {@code META-INF/MANIFEST.MF} entries and reads the {@code plugin.xml} next to
- * it, which is exactly what happens when a user drops the jar into
- * {@code ReportEngine/lib}. {@code BIRT_HOME} is cleared so the engine does not
- * try to start Equinox instead.
+ * Intent: this test is the end-to-end proof that the jar is a well formed BIRT
+ * plug-in.
  * <p>
- * The distribution is a ~100 MB download and is not part of the build, so the
- * test only runs when it is pointed at one:
+ * Constraints: the test runs only if the system property
+ * {@code birt.runtime.dir} names an unpacked distribution. The distribution is
+ * a download of about 100 MB and is not part of the build. Without
+ * {@code -Dbirt.runtime.dir} JUnit reports the test as skipped. The commands
+ * are:
  *
  * <pre>
  * .\build.ps1 clean install
  * .\build.ps1 test -Dtest=RuntimeSmokeIT -Dbirt.runtime.dir=C:\birt-runtime-4.24.0
  * </pre>
- *
- * Without {@code -Dbirt.runtime.dir} the test is reported as skipped.
+ * <p>
+ * Non-obvious behaviour: the test loads the report engine from the jars of the
+ * distribution in a separate {@link URLClassLoader}. The parent of that class
+ * loader is the platform class loader. No class of the test classpath of this
+ * module can therefore reach the report engine. The only other entry on that class
+ * loader is the jar of this plug-in. The POJO {@code ServiceLauncher} finds the
+ * jar: it scans the class loader for {@code META-INF/MANIFEST.MF} entries and
+ * reads the {@code plugin.xml} next to each one. A user gets the same result
+ * when the user copies the jar into {@code ReportEngine/lib}. The test also
+ * clears {@code BIRT_HOME}. If that property is set, then the report engine
+ * tries to start the OSGi runtime instead of the POJO runtime.
  */
 @EnabledIfSystemProperty(named = "birt.runtime.dir", matches = ".+")
 class RuntimeSmokeIT {
 
-	/** The bundle jar, as it is named in {@code build} and in the runtime. */
+	/**
+	 * The name of the jar, in the {@code build} directory and in the POJO runtime.
+	 */
 	private static final String BUNDLE_JAR = "io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar";
 
-	/** The sample report, on the test classpath. */
+	/** The name of the sample report on the test classpath. */
 	private static final String SAMPLE_REPORT = "piecewise-constant-sample.rptdesign";
 
 	@Test
 	void theReportRuntimeRendersThePiecewiseConstantChartAsSvg() throws Exception {
 		Path lib = Path.of(System.getProperty("birt.runtime.dir"), "ReportEngine", "lib");
 		assertTrue(Files.isDirectory(lib),
-				lib + " does not exist - point -Dbirt.runtime.dir at an unpacked birt-runtime-4.24.0 distribution");
+				lib + " does not exist: point -Dbirt.runtime.dir at an unpacked birt-runtime-4.24.0 distribution");
 
 		File design = extractSampleReport();
 		File html = new File(CapturingPngRenderer.outputDirectory(), "runtime-smoke.html");
@@ -78,25 +84,31 @@ class RuntimeSmokeIT {
 		int exitCode = runReport(lib, design, html);
 
 		assertEquals(0, exitCode, "ReportRunner did not finish successfully");
-		assertTrue(html.isFile(), "ReportRunner produced no output at " + html);
+		assertTrue(html.isFile(), "ReportRunner wrote no output at " + html);
 
 		String output = Files.readString(html.toPath(), StandardCharsets.UTF_8);
 		assertTrue(output.contains("image/svg+xml") || output.contains("<svg"),
-				"the rendered report contains no SVG chart - the piecewise constant series was probably not resolved:\n"
-						+ output);
+				"the rendered report contains no SVG chart; the POJO runtime probably did not resolve the piecewise"
+						+ " constant series:\n" + output);
 	}
 
 	/**
 	 * Runs {@code org.eclipse.birt.report.engine.api.ReportRunner} out of the
-	 * distribution. The class is not on this module's classpath, so everything goes
-	 * through reflection - a compile time import would bind us to a different copy
-	 * of the engine.
+	 * distribution.
+	 * <p>
+	 * Constraints: the class is not on the classpath of this module, so the method
+	 * calls it by reflection. An import at compile time would bind this test to
+	 * another copy of the report engine.
+	 * <p>
+	 * Side effects: the method clears the {@code BIRT_HOME} system property and
+	 * replaces the context class loader of the thread. It restores both before it
+	 * returns.
 	 *
-	 * @param lib    the distribution's {@code ReportEngine/lib} directory
+	 * @param lib    the {@code ReportEngine/lib} directory of the distribution
 	 * @param design the report design to run
 	 * @param html   the HTML file to write
-	 * @return the runner's exit code, 0 on success
-	 * @throws Exception if the runner cannot be loaded or invoked
+	 * @return the exit code of the runner, 0 for success
+	 * @throws Exception if the runner cannot be loaded or called
 	 */
 	private static int runReport(Path lib, File design, File html) throws Exception {
 		String[] arguments = { "-f", "HTML", "-o", html.getAbsolutePath(), "-m", "RunAndRender",
@@ -120,9 +132,9 @@ class RuntimeSmokeIT {
 	}
 
 	/**
-	 * @param lib the distribution's {@code ReportEngine/lib} directory
-	 * @return every jar of the distribution plus this bundle
-	 * @throws IOException if the directory cannot be listed
+	 * @param lib the {@code ReportEngine/lib} directory of the distribution
+	 * @return every jar of the distribution, and the jar of this plug-in last
+	 * @throws IOException if the method cannot list the directory
 	 */
 	private static URL[] runtimeClasspath(Path lib) throws IOException {
 		List<URL> urls = new ArrayList<>();
@@ -131,15 +143,17 @@ class RuntimeSmokeIT {
 				urls.add(jar.toUri().toURL());
 			}
 		}
-		assertTrue(!urls.isEmpty(), "no jars found in " + lib);
+		assertTrue(!urls.isEmpty(), "the directory " + lib + " contains no jar");
 		urls.add(bundleRoot().toURI().toURL());
 		return urls.toArray(new URL[0]);
 	}
 
 	/**
-	 * @return the packaged bundle jar, or - if the project has not been packaged
-	 *         yet - {@code build/classes}, which carries the very same
-	 *         {@code META-INF/MANIFEST.MF} and {@code plugin.xml} at its root
+	 * @return the packaged jar of this plug-in. If the build has not packaged the
+	 *         project yet, then the method returns {@code build/classes}, which
+	 *         carries the same {@code META-INF/MANIFEST.MF} and the same
+	 *         {@code plugin.xml} at its root.
+	 * @throws AssertionError if neither the jar nor the classes directory exists
 	 */
 	private static File bundleRoot() {
 		// Surefire runs with the working directory set to the build directory.
@@ -150,14 +164,16 @@ class RuntimeSmokeIT {
 		File classes = new File("classes");
 		assertTrue(new File(classes, "plugin.xml").isFile(),
 				"neither " + jar.getAbsolutePath() + " nor " + classes.getAbsolutePath()
-						+ "/plugin.xml exists - run .\\build.ps1 clean install first");
+						+ "/plugin.xml exists: run .\\build.ps1 clean install first");
 		return classes;
 	}
 
 	/**
-	 * @return the sample report, copied out of the test classpath into the test
-	 *         output directory so that the engine can open it as a file
-	 * @throws IOException if the resource cannot be copied
+	 * Copies the sample report out of the test classpath into the test output
+	 * directory, so that the report engine can open it as a file.
+	 *
+	 * @return the copied report design file
+	 * @throws IOException if the method cannot copy the resource
 	 */
 	private static File extractSampleReport() throws IOException {
 		File design = new File(CapturingPngRenderer.outputDirectory(), SAMPLE_REPORT);
