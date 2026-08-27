@@ -1,30 +1,33 @@
-# BIRT Chart Step Line Series
+# BIRT Chart Piecewise Constant Series
 
-`io.github.lextpf.birt.chart.stepline` is an Eclipse BIRT chart engine extension that adds a
-**StepLineSeries**: a line series rendered as a piecewise-constant (staircase) curve instead of
-straight interpolated segments. Each data point holds its value until the next point, with the
-step transition placed `After`, `Before` or at the `Center` of the interval.
+`io.github.lextpf.birt.chart.piecewiseconstant` is an Eclipse BIRT chart engine extension that adds
+a **PiecewiseConstantSeries**: a line series drawn as a *piecewise constant* function - the value
+of each data point is held until the jump to the next one, so the curve is a run of horizontal
+treads and vertical risers instead of straight interpolated segments. The same series is also
+known as a **step line**, a **staircase** or a **zero-order-hold** series; those are synonyms for
+what this bundle calls piecewise constant. The jump is placed `After`, `Before` or at the `Center`
+of the interval.
 
 The bundle plugs into the BIRT chart engine through the standard `modelrenderers`,
 `datasetprocessors` and `charttypes` extension points, targets **BIRT 4.24.0** and contains no UI
-code. `StepLineSeries` is a subclass of BIRT's own `LineSeries`, so markers, data point labels,
-shadows, stacking, percent axes, transposed (horizontal) charts, 3D and the legend all keep
-working; only the path between the points changes.
+code. `PiecewiseConstantSeries` is a subclass of BIRT's own `LineSeries`, so markers, data point
+labels, shadows, stacking, percent axes, transposed (horizontal) charts, 3D and the legend all
+keep working; only the path between the points changes.
 
 > **Scope:** the Designer's chart wizard is explicitly **out of scope**. There is no wizard page
-> for the step line, so a step line chart cannot be *authored* through the Designer UI - it is
-> authored through the Java API or by editing the chart XML in the `.rptdesign` (see below).
+> for this series, so a piecewise constant chart cannot be *authored* through the Designer UI - it
+> is authored through the Java API or by editing the chart XML in the `.rptdesign` (see below).
 > Rendering was verified for the POJO runtime path only, by this module's test suite; with the jar
 > deployed, the Designer's preview and an OSGi runtime are *expected* to render it the same way,
 > through the standard extension points, but that has not been verified here.
 
 ## Step modes
 
-| Mode | XML literal | Where the line jumps | Shape between two points *p* and *q* |
-| --- | --- | --- | --- |
-| `StepMode.AFTER_LITERAL` | `After` | at the **next** point | hold *p*'s value up to *q*'s position, then jump (zero-order hold) |
-| `StepMode.BEFORE_LITERAL` | `Before` | at the **current** point | jump to *q*'s value at *p*'s position, then hold |
-| `StepMode.CENTER_LITERAL` | `Center` | **halfway** between them | hold, jump at the midpoint, hold - on a category axis the midpoint is the category boundary |
+| Mode | XML literal | Where the line jumps | Shape between two points *p* and *q* | Also called |
+| --- | --- | --- | --- | --- |
+| `StepMode.AFTER_LITERAL` | `After` | at the **next** point | hold *p*'s value up to *q*'s position, then jump | zero-order hold, sample-and-hold; the right-continuous (càdlàg) step function |
+| `StepMode.BEFORE_LITERAL` | `Before` | at the **current** point | jump to *q*'s value at *p*'s position, then hold | left-continuous step |
+| `StepMode.CENTER_LITERAL` | `Center` | **halfway** between them | hold, jump at the midpoint, hold - on a category axis the midpoint is the category boundary | midpoint step |
 
 `After` is the default: a series whose `StepMode` was never set behaves as `After` and writes no
 `<StepMode>` element.
@@ -59,7 +62,7 @@ all arguments to Maven - the project does not build on a newer JDK's default set
 is not expected to be on `PATH`. The bundle jar is produced at
 
 ```
-build\io.github.lextpf.birt.chart.stepline_1.0.0.jar
+build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar
 ```
 
 with `plugin.xml` and an OSGi `META-INF/MANIFEST.MF` at its root, which is what makes it a BIRT
@@ -80,7 +83,7 @@ Download and unpack
 then copy the jar next to the engine's own jars:
 
 ```powershell
-Copy-Item .\build\io.github.lextpf.birt.chart.stepline_1.0.0.jar `
+Copy-Item .\build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar `
           C:\birt-runtime-4.24.0\ReportEngine\lib\
 ```
 
@@ -97,14 +100,15 @@ instead.
 Copy the same jar into the OSGi installation's dropins:
 
 ```
-<eclipse>\dropins\plugins\io.github.lextpf.birt.chart.stepline_1.0.0.jar
+<eclipse>\dropins\plugins\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar
 ```
 
 and restart with `-clean`. Equinox reads the bundle manifest and registers the three extensions.
-Reports containing a step line series are then *expected* to preview and render in the Designer
-just as they do in the POJO runtime, since both resolve the series through the same extension
-points - this path was not exercised on a Designer install, only the POJO runtime path was, by the
-module's test suite. Either way - as stated above - the chart wizard offers no way to create one.
+Reports containing a piecewise constant series are then *expected* to preview and render in the
+Designer just as they do in the POJO runtime, since both resolve the series through the same
+extension points - this path was not exercised on a Designer install, only the POJO runtime path
+was, by the module's test suite. Either way - as stated above - the chart wizard offers no way to
+create one.
 
 ### (c) Java API
 
@@ -114,15 +118,15 @@ import org.eclipse.birt.chart.model.data.SeriesDefinition;
 import org.eclipse.birt.chart.model.data.impl.NumberDataSetImpl;
 import org.eclipse.birt.chart.model.data.impl.SeriesDefinitionImpl;
 
-import io.github.lextpf.birt.chart.stepline.StepLineSetup;
-import io.github.lextpf.birt.chart.stepline.model.type.StepLineSeries;
-import io.github.lextpf.birt.chart.stepline.model.type.StepMode;
-import io.github.lextpf.birt.chart.stepline.model.type.impl.StepLineSeriesImpl;
+import io.github.lextpf.birt.chart.piecewiseconstant.PiecewiseConstantSetup;
+import io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstantSeries;
+import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
+import io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl;
 
 // Only for a chart engine started with the STANDALONE flag - see below.
-StepLineSetup.registerStandalone();
+PiecewiseConstantSetup.registerStandalone();
 
-StepLineSeries series = (StepLineSeries) StepLineSeriesImpl.create();
+PiecewiseConstantSeries series = (PiecewiseConstantSeries) PiecewiseConstantSeriesImpl.create();
 series.setStepMode(StepMode.CENTER_LITERAL);
 series.setDataSet(NumberDataSetImpl.create(new Double[] { 12.5, 19.6, 18.3, 13.2, 26.5 }));
 
@@ -132,12 +136,12 @@ chart.getPrimaryOrthogonalAxis(chart.getPrimaryBaseAxes()[0]).getSeriesDefinitio
 valueDefinition.getSeries().add(series);
 ```
 
-`StepLineSeriesImpl.create()` returns a series with BIRT's usual line-series defaults (one visible
-box marker, a line label, `connectMissingValue = true`) and an explicitly set `StepMode` of
-`After`; `StepLineSeriesImpl.createDefault()` returns the "unset" variant BIRT uses to compute
-defaults with, which serializes without a `<StepMode>` element.
+`PiecewiseConstantSeriesImpl.create()` returns a series with BIRT's usual line-series defaults
+(one visible box marker, a line label, `connectMissingValue = true`) and an explicitly set
+`StepMode` of `After`; `PiecewiseConstantSeriesImpl.createDefault()` returns the "unset" variant
+BIRT uses to compute defaults with, which serializes without a `<StepMode>` element.
 
-#### `StepLineSetup.registerStandalone()`
+#### `PiecewiseConstantSetup.registerStandalone()`
 
 There are three ways to run the chart engine, and only one of them needs setup code:
 
@@ -145,21 +149,22 @@ There are three ways to run the chart engine, and only one of them needs setup c
 | --- | --- | --- |
 | OSGi (Designer, OSGi report engine) | Equinox extension registry | none |
 | POJO runtime (`Platform.startup`, `ChartEngine.instance(new PlatformConfig())`, `ReportRunner`) | classpath scan for `plugin.xml` | none |
-| Standalone (`config.setProperty(PluginSettings.PROP_STANDALONE, "true")`) | hard-coded arrays inside `PluginSettings` | `StepLineSetup.registerStandalone()` |
+| Standalone (`config.setProperty(PluginSettings.PROP_STANDALONE, "true")`) | hard-coded arrays inside `PluginSettings` | `PiecewiseConstantSetup.registerStandalone()` |
 
 The standalone chart engine skips `Platform.startup` entirely and resolves renderers from a fixed
 list of the series types BIRT ships with, so it would report *"Could not find series renderer
-impl"* and draw nothing. `StepLineSetup.registerStandalone()` appends the step line to those
-lists and registers the EMF package. Call it once, after the `PluginSettings` singleton exists and
-before the first chart is built. It is idempotent and harmless in the other two environments.
+impl"* and draw nothing. `PiecewiseConstantSetup.registerStandalone()` appends the piecewise
+constant series to those lists and registers the EMF package. Call it once, after the
+`PluginSettings` singleton exists and before the first chart is built. It is idempotent and
+harmless in the other two environments.
 
 #### Class-loading order
 
 The chart serializer caches the set of chart model packages in a **static initializer**. If
 `org.eclipse.birt.chart.model.impl.SerializerImpl` (or `ChartDynamicExtension`) is loaded *before*
-the platform is up, that cache is empty for the rest of the JVM's life and a step line series
-silently deserializes as a plain `LineSeries`. Start the platform - or call
-`StepLineSetup.registerStandalone()` - before touching the serializer.
+the platform is up, that cache is empty for the rest of the JVM's life and a piecewise constant
+series silently deserializes as a plain `LineSeries`. Start the platform - or call
+`PiecewiseConstantSetup.registerStandalone()` - before touching the serializer.
 
 ## In a `.rptdesign`
 
@@ -173,13 +178,13 @@ value series carries the `xsi:type` and the mode:
                      xmlns:data="http://www.birt.eclipse.org/ChartModelData"
                      xmlns:layout="http://www.birt.eclipse.org/ChartModelLayout"
                      xmlns:model="http://www.birt.eclipse.org/ChartModel"
-                     xmlns:stepline="http://lextpf.github.io/birt/chart/StepLineModelType">
+                     xmlns:piecewise="http://lextpf.github.io/birt/chart/PiecewiseConstantModelType">
   ...
-        <Series xsi:type="stepline:StepLineSeries">
+        <Series xsi:type="piecewise:PiecewiseConstantSeries">
           <DataDefinition>
             <Definition>row[&quot;value&quot;]</Definition>
           </DataDefinition>
-          <SeriesIdentifier>Value</SeriesIdentifier>
+          <SeriesIdentifier>series1</SeriesIdentifier>
           ...
           <StepMode>After</StepMode>
         </Series>
@@ -189,7 +194,7 @@ value series carries the `xsi:type` and the mode:
 
 `StepMode` is a child **element**, not an attribute, and its only legal values are `After`,
 `Before` and `Center`. A complete, runnable example is
-[`test/stepline-sample.rptdesign`](test/stepline-sample.rptdesign):
+[`test/piecewise-constant-sample.rptdesign`](test/piecewise-constant-sample.rptdesign):
 a scripted five-row data set (`category`, `value`) with a chart item bound to it.
 
 ## Behaviour notes
@@ -203,7 +208,7 @@ a scripted five-row data set (`category`, `value`) with a chart item bound to it
   a stock line series.
 - **Equal neighbours.** Two equal values form one flat step and produce no corner, so a constant
   series draws as a single straight line.
-- **`curve`.** Ignored. A piecewise-constant line has no spline, so a series with `curve = true`
+- **`curve`.** Ignored. A piecewise constant line has no spline, so a series with `curve = true`
   is still drawn as a staircase.
 - **Stacking and percent axes.** Each series is expanded after BIRT has stacked it, so every series
   of a stacked group is its own staircase on top of the previous one.
@@ -236,9 +241,9 @@ overrides the configured value:
 ```
 
 `birt.runtime.dir` is the directory that contains `ReportEngine\lib`. Build the jar first: the test
-puts `build\io.github.lextpf.birt.chart.stepline_1.0.0.jar` on the runtime's class loader (falling
-back to `build\classes`, which carries the same `plugin.xml`, when the project has not been
-packaged yet).
+puts `build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` on the runtime's class loader
+(falling back to `build\classes`, which carries the same `plugin.xml`, when the project has not
+been packaged yet).
 
 ## License
 
