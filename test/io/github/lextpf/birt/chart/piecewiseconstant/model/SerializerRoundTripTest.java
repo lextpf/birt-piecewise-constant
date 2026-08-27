@@ -44,8 +44,12 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartFixtures;
 import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension;
 
 /**
- * Verifies that a chart carrying a {@link PiecewiseConstantSeries} survives BIRT's
- * serializer and EMF's copy machinery unchanged.
+ * Verifies that a chart with a {@link PiecewiseConstantSeries} keeps its series
+ * type and its step mode. The chart passes through the serializer of the chart
+ * engine and through the copy methods of EMF.
+ * <p>
+ * Constraints: {@link ChartPlatformExtension} starts the POJO runtime, because
+ * {@code SerializerImpl} reads the extension model packages of that runtime.
  */
 @ExtendWith(ChartPlatformExtension.class)
 class SerializerRoundTripTest {
@@ -76,11 +80,13 @@ class SerializerRoundTripTest {
 	void writesTheExtensionNamespaceAndStepModeAsAnElement() throws IOException {
 		String xml = write(beforeModeChart());
 
-		assertTrue(xml.contains(PiecewiseConstantPackage.eNS_URI), "extension namespace missing from:\n" + xml);
-		assertTrue(xml.contains("xsi:type=\"piecewise:PiecewiseConstantSeries\""), "xsi:type missing from:\n" + xml);
-		assertTrue(xml.contains("<StepMode>Before</StepMode>"), "StepMode element missing from:\n" + xml);
-		assertFalse(xml.contains("StepMode=\""), "StepMode must be an element, not an attribute:\n" + xml);
-		assertFalse(xml.contains("stepMode=\""), "StepMode must be an element, not an attribute:\n" + xml);
+		assertTrue(xml.contains(PiecewiseConstantPackage.eNS_URI),
+				"the extension namespace is missing from:\n" + xml);
+		assertTrue(xml.contains("xsi:type=\"piecewise:PiecewiseConstantSeries\""),
+				"the xsi:type is missing from:\n" + xml);
+		assertTrue(xml.contains("<StepMode>Before</StepMode>"), "the StepMode element is missing from:\n" + xml);
+		assertFalse(xml.contains("StepMode=\""), "StepMode must be an element and not an attribute:\n" + xml);
+		assertFalse(xml.contains("stepMode=\""), "StepMode must be an element and not an attribute:\n" + xml);
 	}
 
 	@Test
@@ -125,7 +131,8 @@ class SerializerRoundTripTest {
 
 		String xml = write(chart);
 
-		assertTrue(xml.contains("xsi:type=\"piecewise:PiecewiseConstantSeries\""), "xsi:type missing from:\n" + xml);
+		assertTrue(xml.contains("xsi:type=\"piecewise:PiecewiseConstantSeries\""),
+				"the xsi:type is missing from:\n" + xml);
 		assertFalse(xml.contains("StepMode"), "createDefault() must leave stepMode unset:\n" + xml);
 		assertFalse(((PiecewiseConstantSeries) unsetSeries).isSetStepMode());
 		assertEquals(StepMode.AFTER_LITERAL, ((PiecewiseConstantSeries) unsetSeries).getStepMode());
@@ -146,8 +153,9 @@ class SerializerRoundTripTest {
 
 		Series defaults = ChartDefaultValueUtil.getDefaultSeries(series);
 
-		// Documents the pitfall: PiecewiseConstantSeries is a LineSeries, so BIRT hands back
-		// stock line-series defaults and never a PiecewiseConstantSeries.
+		// This test records a trap for the caller. PiecewiseConstantSeries is a
+		// LineSeries, so the chart engine returns stock LineSeries defaults and never
+		// a PiecewiseConstantSeries.
 		assertInstanceOf(LineSeries.class, defaults);
 		assertFalse(defaults instanceof PiecewiseConstantSeries,
 				"getDefaultSeries() must not be used to obtain piecewise constant defaults");
