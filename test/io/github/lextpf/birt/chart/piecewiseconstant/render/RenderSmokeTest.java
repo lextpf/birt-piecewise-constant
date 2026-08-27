@@ -41,17 +41,20 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartFixtures.Options;
 import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension;
 
 /**
- * Renders every piecewise constant variant through the real,
- * registry-provided devices and writes the results to
+ * Renders every variant of the piecewise constant series through the devices of
+ * the extension registry, and writes the files to
  * <code>build/test-output</code>.
  * <p>
- * Unlike {@link PiecewiseConstantGeometryTest} this does not construct the
- * device class directly: the devices come from the extension registry under
- * their <code>dv.PNG</code> / <code>dv.SVG</code> ids, which is how an embedding
- * application obtains them - so this also proves that the piecewise constant
- * series survives a device it knows nothing about. The assertions are deliberately shallow (a
- * non-empty file, a drawn path in the SVG, and a transparent background in the
- * PNG); the images themselves are the artefact worth looking at.
+ * Intent: {@link PiecewiseConstantGeometryTest} constructs its device class
+ * directly. This class takes the devices from the extension registry under
+ * their <code>dv.PNG</code> and <code>dv.SVG</code> ids, which is the way an
+ * application gets them. The tests therefore also prove that the piecewise
+ * constant series works with a device that knows nothing about it.
+ * <p>
+ * Non-obvious behaviour: the assertions are shallow on purpose. They test for a
+ * file that is not empty. They test for a drawn path in the SVG file. They test
+ * for a transparent background in the PNG file. The images are the result that a
+ * reader must look at.
  */
 @ExtendWith(ChartPlatformExtension.class)
 class RenderSmokeTest {
@@ -60,15 +63,15 @@ class RenderSmokeTest {
 
 	private static final Double[] SECOND_VALUES = { 3.0, 4.0, 2.0 };
 
-	/** The chart bounds handed to the generator, in points. */
+	/** The chart bounds that the tests give to the generator, in points. */
 	private static final int CHART_WIDTH_POINTS = 600;
 
 	private static final int CHART_HEIGHT_POINTS = 400;
 
 	/**
-	 * What {@link CapturingPngRenderer#EXPORT_DPI} makes of those bounds: BIRT
-	 * measures a chart in points (1/72 inch) and scales the device bounds by
-	 * <code>dpi / 72</code> on the way to the device.
+	 * The factor that {@link CapturingPngRenderer#EXPORT_DPI} applies to those
+	 * bounds. The chart engine measures a chart in points, that is 1/72 inch. It
+	 * scales the device bounds by <code>dpi / 72</code> before the device draws.
 	 */
 	private static final int EXPORT_SCALE = CapturingPngRenderer.EXPORT_DPI / 72;
 
@@ -124,14 +127,14 @@ class RenderSmokeTest {
 
 		assertNotNull(image, png + " is not a readable image");
 		assertTrue(image.getColorModel().hasAlpha(),
-				"BIRT's PNG device writes ARGB, so the image must carry an alpha channel");
+				"the PNG device writes ARGB, so the image must carry an alpha channel");
 		assertEquals(0, image.getRGB(2, 2) >>> 24,
-				"the chart background must be fully transparent so the image works on a dark page too");
-		assertTrue(drawnPixels(image) > 0, "the plot area is empty - nothing was drawn on the transparent ground");
+				"the chart background must be fully transparent, so that the image also works on a dark page");
+		assertTrue(drawnPixels(image) > 0, "the plot area is empty: the chart drew nothing on the transparent ground");
 		assertEquals(CHART_WIDTH_POINTS * EXPORT_SCALE, image.getWidth(),
-				"the device must have honoured IDeviceRenderer.DPI_RESOLUTION and rendered at export resolution");
+				"the device must apply IDeviceRenderer.DPI_RESOLUTION and render at the export resolution");
 		assertEquals(CHART_HEIGHT_POINTS * EXPORT_SCALE, image.getHeight(),
-				"the device must have honoured IDeviceRenderer.DPI_RESOLUTION and rendered at export resolution");
+				"the device must apply IDeviceRenderer.DPI_RESOLUTION and render at the export resolution");
 	}
 
 	@Test
@@ -142,7 +145,7 @@ class RenderSmokeTest {
 				"dv.SVG", "piecewise-constant-after.svg");
 
 		String document = Files.readString(svg.toPath(), StandardCharsets.UTF_8);
-		assertTrue(document.contains("<path"), "BIRT's SVG device draws lines as <path> elements");
+		assertTrue(document.contains("<path"), "the SVG device draws a line as a <path> element");
 	}
 
 	private static File renderPng(ChartWithAxes chart, String fileName) throws Exception {
@@ -150,17 +153,19 @@ class RenderSmokeTest {
 	}
 
 	/**
-	 * @param caption the title the rendered chart carries
-	 * @return fresh options with that title
+	 * @param caption the caption of the rendered chart
+	 * @return new options with that caption
 	 */
 	private static Options titled(String caption) {
 		return new Options().title(caption);
 	}
 
 	/**
+	 * Counts the pixels that the chart drew inside the plot area.
+	 *
 	 * @param image a rendered chart
-	 * @return the number of pixels in the middle half of the image - which is
-	 *         inside the plot area - that are not fully transparent
+	 * @return the number of pixels in the middle half of the image that are not
+	 *         fully transparent. The middle half is inside the plot area.
 	 */
 	private static int drawnPixels(BufferedImage image) {
 		int drawn = 0;
@@ -174,6 +179,18 @@ class RenderSmokeTest {
 		return drawn;
 	}
 
+	/**
+	 * Renders one chart with a device of the extension registry.
+	 * <p>
+	 * Side effects: the method writes the output file into the test output
+	 * directory.
+	 *
+	 * @param chart    the chart to render
+	 * @param deviceId the extension registry id of the device
+	 * @param fileName the name of the output file
+	 * @return the output file
+	 * @throws Exception if the chart engine fails
+	 */
 	private static File render(Chart chart, String deviceId, String fileName) throws Exception {
 		File out = new File(CapturingPngRenderer.outputDirectory(), fileName);
 
@@ -188,7 +205,7 @@ class RenderSmokeTest {
 				BoundsImpl.create(0, 0, CHART_WIDTH_POINTS, CHART_HEIGHT_POINTS), null, rtc, null);
 		generator.render(device, state);
 
-		assertTrue(out.isFile(), fileName + " was not written");
+		assertTrue(out.isFile(), "the device did not write " + fileName);
 		assertTrue(out.length() > 0, fileName + " is empty");
 		return out;
 	}
