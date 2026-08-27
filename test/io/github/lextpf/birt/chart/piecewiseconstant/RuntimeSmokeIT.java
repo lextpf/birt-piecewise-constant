@@ -41,12 +41,13 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.CapturingPngRenderer;
  * Constraints: the test runs only if the system property
  * {@code birt.runtime.dir} names an unpacked distribution. The distribution is
  * a download of about 100 MB and is not part of the build. Without
- * {@code -Dbirt.runtime.dir} JUnit reports the test as skipped. The commands
- * are:
+ * {@code -Dbirt.runtime.dir} JUnit reports the test as skipped. The first
+ * command builds the jar. The second command runs this test against the
+ * distribution:
  *
  * <pre>
- * .\build.ps1 clean install
- * .\build.ps1 test -Dtest=RuntimeSmokeIT -Dbirt.runtime.dir=C:\birt-runtime-4.24.0
+ * .\build.ps1
+ * .\test.ps1 -Test RuntimeSmokeIT -Runtime C:\birt-runtime-4.24.0
  * </pre>
  * <p>
  * Non-obvious behaviour: the test loads the report engine from the jars of the
