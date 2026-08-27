@@ -45,33 +45,42 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartFixtures.Options;
 
 /**
  * Proves that {@link PiecewiseConstantSetup#registerStandalone()} makes the
- * piecewise constant series work in a chart engine that has no extension
- * registry at all.
+ * piecewise constant series work in a standalone chart engine, which has no
+ * extension registry.
  * <p>
- * The test deliberately does <em>not</em> use
- * {@code ChartPlatformExtension}: it creates the {@link PluginSettings}
- * singleton itself with the {@code STANDALONE} flag set, which makes
- * {@link PluginSettings#inEclipseEnv()} return {@code false} for the rest of
- * the JVM's life, so every lookup goes through the hard-coded arrays instead of
- * {@code plugin.xml}. Surefire forks one JVM per test class, so that decision
- * cannot leak into another test class - and no other test class can have
- * created the singleton first.
+ * Constraints: this class must not use {@code ChartPlatformExtension}. It
+ * creates the {@link PluginSettings} singleton itself with the
+ * {@code STANDALONE} flag, and it must do so before any other class touches
+ * that singleton. The flag makes {@link PluginSettings#inEclipseEnv()} return
+ * {@code false} for the life of the JVM, so every lookup reads the hard-coded
+ * arrays and not {@code plugin.xml}. Surefire forks one JVM per test class, so
+ * no other test class creates the singleton first, and the flag reaches no
+ * other test class.
  * <p>
- * The methods are ordered because they tell one story in one JVM: what the
- * standalone engine looks like <em>before</em> registration has to be observed
- * before registration happens.
+ * Non-obvious behaviour: the test methods run in a fixed order, because they
+ * tell one story in one JVM. A test must observe the standalone chart engine
+ * before the registration, and the registration happens in a later test.
  */
 @TestMethodOrder(OrderAnnotation.class)
 class StandaloneFallbackTest {
 
-	/** Three points on categories A, B, C - two steps, four segments. */
+	/**
+	 * Three data points on the categories A, B and C. The line makes two steps and
+	 * has four segments.
+	 */
 	private static final Double[] VALUES = { 5.0, 9.0, 3.0 };
 
 	private static PluginSettings settings;
 
 	/**
-	 * Creates the {@link PluginSettings} singleton in standalone mode, before
-	 * anything else in this JVM can create it with a platform behind it.
+	 * Creates the {@link PluginSettings} singleton with the {@code STANDALONE}
+	 * flag.
+	 * <p>
+	 * Constraints: this method must run before any other class in this JVM creates
+	 * the singleton with a runtime behind it.
+	 * <p>
+	 * Side effects: the singleton is static, and it keeps the flag for the life of
+	 * the JVM.
 	 */
 	@BeforeAll
 	static void createStandalonePluginSettings() {
@@ -86,9 +95,9 @@ class StandaloneFallbackTest {
 		assertFalse(settings.inEclipseEnv(), "the STANDALONE flag must switch the extension registry off");
 
 		assertNull(settings.getRenderer(PiecewiseConstantSeriesImpl.class),
-				"an unregistered series must not resolve to a renderer in standalone mode");
+				"a series that nothing registered must not resolve to a renderer in the standalone chart engine");
 		assertNull(EPackage.Registry.INSTANCE.getEPackage(PiecewiseConstantPackage.eNS_URI),
-				"nothing may have registered our EMF package yet");
+				"nothing must have registered the EMF package of this plug-in yet");
 	}
 
 	@Test
@@ -105,16 +114,17 @@ class StandaloneFallbackTest {
 	@Order(3)
 	void afterRegistrationTheStandaloneEngineResolvesRendererProcessorAndPackage() throws Exception {
 		BaseRenderer renderer = settings.getRenderer(PiecewiseConstantSeriesImpl.class);
-		assertNotNull(renderer, "the piecewise constant renderer must resolve in standalone mode");
+		assertNotNull(renderer, "the piecewise constant renderer must resolve in the standalone chart engine");
 		assertSame(PiecewiseConstantLine.class, renderer.getClass());
 
 		IDataSetProcessor processor = settings.getDataSetProcessor(PiecewiseConstantSeriesImpl.class);
-		assertNotNull(processor, "the piecewise constant data set processor must resolve in standalone mode");
+		assertNotNull(processor,
+				"the piecewise constant data set processor must resolve in the standalone chart engine");
 		assertEquals("org.eclipse.birt.chart.extension.datafeed.DataSetProcessorImpl", processor.getClass().getName());
 
 		assertSame(PiecewiseConstantPackage.eINSTANCE,
 				EPackage.Registry.INSTANCE.getEPackage(PiecewiseConstantPackage.eNS_URI),
-				"registerStandalone() must have put our EMF package into the global registry");
+				"registerStandalone() must put the EMF package of this plug-in into the global registry");
 	}
 
 	@Test
@@ -127,7 +137,7 @@ class StandaloneFallbackTest {
 		File png = new File(CapturingPngRenderer.outputDirectory(), "piecewise-constant-standalone.png");
 		List<Seg> segments = CapturingPngRenderer.render(chart, png, device);
 
-		assertEquals(4, segments.size(), "three points in AFTER mode make two treads and two risers");
+		assertEquals(4, segments.size(), "three data points in AFTER mode make two treads and two steps");
 		for (int i = 0; i < segments.size(); i++) {
 			Seg segment = segments.get(i);
 			assertTrue((segment.x1() == segment.x2()) ^ (segment.y1() == segment.y2()),
@@ -140,20 +150,22 @@ class StandaloneFallbackTest {
 						+ (i - 1) + " ended");
 			}
 		}
-		assertTrue(png.isFile(), "the standalone render must have produced a PNG");
+		assertTrue(png.isFile(), "the standalone chart engine must have written a PNG file");
 	}
 
 	/**
-	 * Counts how often a series class appears in {@code PluginSettings}' private
-	 * standalone lookup array.
+	 * Counts the entries for one series class in the private standalone lookup
+	 * array of {@code PluginSettings}.
 	 * <p>
-	 * {@code registerSeriesRenderer} appends unconditionally and every lookup
-	 * stops at the first match, so a double registration is invisible through the
-	 * public API - the array itself is the only place where the guard in
-	 * {@link PiecewiseConstantSetup} can be observed.
+	 * Non-obvious behaviour: {@code registerSeriesRenderer} appends without a
+	 * check, and every lookup stops at the first match. A second registration is
+	 * therefore invisible through the public API. The array is the only place
+	 * where a test can observe the guard in {@link PiecewiseConstantSetup}.
 	 *
-	 * @param seriesClassName the fully qualified series implementation class name
-	 * @return the number of entries naming that class
+	 * @param seriesClassName the fully qualified name of the series
+	 *                        implementation class
+	 * @return the number of entries that name that class
+	 * @throws AssertionError if the field is no longer readable by reflection
 	 */
 	private static int registeredSeriesEntries(String seriesClassName) {
 		try {
