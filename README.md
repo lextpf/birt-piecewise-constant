@@ -102,7 +102,7 @@ token, then download the release (a) or build the plug-in locally (c).
 ### (c) Build it locally
 
 Precondition: the machine runs Windows with PowerShell 7, and it holds a JDK 21 and an Apache Maven
-installation. See [Building from source](#building-from-source) for what the two scripts do.
+installation. See [Building from source](#building-from-source) for what the scripts do.
 
 1. Write the toolchain configuration:
 
@@ -110,15 +110,24 @@ installation. See [Building from source](#building-from-source) for what the two
    .\setup.ps1
    ```
 
-2. Build the jars and install them:
+2. Build the jars:
 
    ```powershell
-   .\build.ps1 clean install
+   .\build.ps1
    ```
 
-The build produces `build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` and the sources
-jar. Note: it also installs both jars into the local repository under `~/.m2/repository`. A sibling
-project can then use the coordinates above with no repository entry at all.
+`.\build.ps1` builds the jars and runs no test. It produces
+`build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar` and the sources jar. Run
+`.\test.ps1` when you want the test suite.
+
+3. Install the jars, if a sibling project must resolve them from the local repository:
+
+   ```powershell
+   .\build.ps1 install
+   ```
+
+That command puts both jars under `~/.m2/repository`. A sibling project can then use the
+coordinates above with no repository entry at all.
 
 ## Integrating into a BIRT engine
 
@@ -338,11 +347,22 @@ Precondition: the machine runs Windows with PowerShell 7.
    .\setup.ps1
    ```
 
-2. Build the jars and install them:
+2. Build the jars:
 
    ```powershell
-   .\build.ps1 clean install
+   .\build.ps1
    ```
+
+3. Run the tests:
+
+   ```powershell
+   .\test.ps1
+   ```
+
+Three scripts work together. [`toolchain.ps1`](toolchain.ps1) holds the shared part, and
+`build.ps1` and `test.ps1` dot-source it. It reads `.env`, it validates `JAVA_HOME` and
+`MAVEN_HOME`, and it runs Maven with the pinned JDK. It starts no build on its own. If a path is
+missing or wrong, then it prints a help screen and exits with code 1.
 
 **Step 1.** The script detects a **JDK 21** and an Apache Maven installation, and validates both.
 `bin\java.exe` must report Java 21 or newer, and the Maven root must contain `bin\mvn.cmd`. Note:
@@ -359,23 +379,67 @@ Git ignores `.env`, so no local path ever reaches the repository.
 environment**. `.env` is the pinned toolchain of the project, and a machine-wide `JAVA_HOME` often
 points at a different JDK.
 
-**Step 2.** `build.ps1` reads that configuration and validates it. It points Maven at the pinned
-JDK and forwards all arguments to Maven. The project does not build with the default settings of a
-newer JDK, and the script does not need Maven on `PATH`. The build produces the jar at:
+**Step 2.** `build.ps1` builds the jars, and it runs **no test**. Without arguments it runs
+`mvn -B -ntp -DskipTests clean package`. With arguments it replaces the goals: `.\build.ps1 install`
+runs `mvn -B -ntp -DskipTests install`. It forwards every argument unchanged, and it exits
+with the exit code of Maven. The project does not build with the default settings of a newer JDK,
+and the script does not need Maven on `PATH`. The build produces the jar at:
 
 ```
 build\io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar
 ```
 
-To run the test suite, use this command:
+The script always prepends `-DskipTests`. Maven reads the command line from left to right, and the
+last value of a property wins. You can therefore switch the tests back on:
 
 ```powershell
-.\build.ps1 clean verify
+.\build.ps1 clean install -DskipTests=false
 ```
 
-`build.ps1` is a convenience wrapper for Windows and not a build system. On any other platform, and
-in CI, you must point `JAVA_HOME` at a JDK 21. You must then call plain `mvn -B -ntp clean verify`
-in the project root.
+**Step 3.** `test.ps1` runs `mvn -B -ntp test`, and it reports the results. It writes the complete
+Maven output to `build\test.log`. On the console it shows one line per test class while the run
+goes on. It then reads the surefire reports in `build\surefire-reports` and prints a table:
+
+```
+Test class                     Tests  Failures  Errors  Skipped   Seconds
+-----------------------------------------------------------------------
+PiecewiseConstantExpanderTest     17         0       0        0     0.158
+PiecewiseConstantGeometryTest     16         0       0        0     3.637
+PluginDiscoveryTest                6         0       0        0     0.358
+RenderSmokeTest                    6         0       0        0     1.868
+RuntimeSmokeIT                     1         0       0        0     1.697
+SampleReportTest                   4         0       0        0     0.430
+SerializerRoundTripTest            7         0       0        0     0.432
+StandaloneFallbackTest             4         0       0        0     0.778
+-----------------------------------------------------------------------
+TOTAL (8 classes)                 61         0       0        0     9.358
+
+RESULT: PASS (61 tests)
+```
+
+For every failed test the script prints the class, the method and the first line of the message.
+The last line is `RESULT: PASS (n tests)` in green, or `RESULT: FAIL (n failures, m errors)` in
+red. The exit code is 0 only when Maven succeeded **and** no test failed.
+
+The script deletes the reports of the previous run before it starts Maven. The table therefore
+shows the current run only. It takes these parameters:
+
+| Parameter | Effect |
+| --- | --- |
+| `-Test <pattern>` | passes `-Dtest=<pattern>` to surefire. A pattern is a class name, for example `RenderSmokeTest` or `*ExpanderTest`. |
+| `-Runtime <dir>` | passes `-Dbirt.runtime.dir=<dir>`. This value overrides `BIRT_RUNTIME_DIR` from `.env`. |
+| `-ShowLog` | streams the full Maven output to the console. The log file still gets every line. |
+
+The script forwards every further argument to Maven, for example `-Dsurefire.timeout=300`.
+
+If a `-Test` pattern matches no class, then Maven fails the run and writes no report. The script
+then names the pattern, prints the last 30 lines of `build\test.log`, and exits with a non-zero
+code. The script does not pass `-Dsurefire.failIfNoSpecifiedTests=false`, because a pattern with a
+typo must not report success.
+
+`build.ps1` and `test.ps1` are convenience wrappers for Windows and not a build system. On any
+other platform, and in CI, you must point `JAVA_HOME` at a JDK 21. You must then call plain
+`mvn -B -ntp clean verify` in the project root.
 
 ### Running the runtime smoke test
 
@@ -394,20 +458,21 @@ Precondition: the machine holds an unpacked BIRT runtime distribution.
    .\setup.ps1 -BirtRuntimeDir C:\birt-runtime-4.24.0
    ```
 
-2. Run the whole suite:
+2. Build the jar, then run the whole suite:
 
    ```powershell
-   .\build.ps1 clean verify
+   .\build.ps1
+   .\test.ps1
    ```
 
-Note: `build.ps1` appends `-Dbirt.runtime.dir` to every Maven invocation by itself, so step 2 runs
-the test along with the rest of the suite.
+Note: `test.ps1` appends `-Dbirt.runtime.dir` by itself when `BIRT_RUNTIME_DIR` is configured, so
+step 2 runs the test along with the rest of the suite.
 
-You can also pass the property explicitly. An explicit value overrides the configured one:
+You can also name the runtime explicitly. An explicit value overrides the configured one:
 
 ```powershell
-.\build.ps1 clean install
-.\build.ps1 test -Dtest=RuntimeSmokeIT -Dbirt.runtime.dir=C:\birt-runtime-4.24.0
+.\build.ps1
+.\test.ps1 -Test RuntimeSmokeIT -Runtime C:\birt-runtime-4.24.0
 ```
 
 Build the jar first. The test puts
