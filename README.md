@@ -31,13 +31,32 @@ working; only the path between the points changes.
 
 ## Build
 
+Run the setup script once - it auto-detects a **JDK 21** and an Apache Maven installation,
+validates them (`bin\java.exe` reporting Java 21 or newer, `bin\mvn.cmd`) and writes the
+git-ignored `.env`:
+
+```powershell
+.\setup.ps1
+```
+
+Pass `-JavaHome`, `-MavenHome` or `-BirtRuntimeDir` when the detection guesses wrong or has
+nothing to go on, `-NonInteractive` to fail instead of prompting (useful in CI), and `-Force` to
+overwrite an existing `.env`. Alternatively, skip `setup.ps1` entirely and set the environment
+variables `JAVA_HOME`, `MAVEN_HOME` and (optionally) `BIRT_RUNTIME_DIR` yourself.
+
+`.env` is git-ignored - no local path is ever committed - and [`.env.example`](.env.example)
+documents the keys. When `.env` exists its values **win over the environment**: it is the
+project's pinned toolchain, and a machine-wide `JAVA_HOME` often points at a different JDK.
+
+Then:
+
 ```powershell
 .\build.ps1 clean install
 ```
 
-`build.ps1` pins **JDK 21** (`C:\Program Files\Java\jdk-21.0.12.1`) and the local Maven install,
-then forwards all arguments to Maven - the project does not build on a newer JDK's default
-settings, and Maven is not expected to be on `PATH`. The bundle jar is produced at
+`build.ps1` reads that configuration, validates it, points Maven at the pinned JDK and forwards
+all arguments to Maven - the project does not build on a newer JDK's default settings, and Maven
+is not expected to be on `PATH`. The bundle jar is produced at
 
 ```
 build\io.github.lextpf.birt.chart.stepline_1.0.0.jar
@@ -198,7 +217,18 @@ a scripted five-row data set (`category`, `value`) with a chart item bound to it
 
 `RuntimeSmokeIT` runs the sample report through a real, unpacked BIRT report runtime and asserts
 that the HTML output contains an SVG chart. The distribution is a ~100 MB download and is not part
-of the build, so the test is **skipped** unless it is pointed at one:
+of the build, so the test is **skipped** unless it is pointed at one.
+
+The easy way is to configure it once: set `BIRT_RUNTIME_DIR` in `.env` (`.\setup.ps1 -BirtRuntimeDir
+C:\birt-runtime-4.24.0`) or in the environment, and `build.ps1` appends `-Dbirt.runtime.dir`
+to every Maven invocation by itself - so
+
+```powershell
+.\build.ps1 clean verify
+```
+
+then runs the IT along with the rest of the suite. Passing the property explicitly still works and
+overrides the configured value:
 
 ```powershell
 .\build.ps1 clean install
