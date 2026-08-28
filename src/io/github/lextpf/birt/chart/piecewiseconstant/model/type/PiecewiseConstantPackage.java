@@ -23,10 +23,6 @@ import org.eclipse.emf.ecore.EPackage;
  * of the enumeration. EMF needs these meta objects to read and write the series
  * in the chart XML.
  * <p>
- * Constraints: {@link #eNS_URI} must stay equal to the <code>namespaceURI</code>
- * of the <code>charttypes</code> extension in <code>plugin.xml</code>. A saved
- * chart holds the same URI, so a change to it makes old charts unreadable.
- * <p>
  * Side effects: the first read of {@link #eINSTANCE} runs
  * {@code PiecewiseConstantPackageImpl.init()}. That method puts the package into
  * the global {@code EPackage.Registry.INSTANCE}.
@@ -35,9 +31,6 @@ import org.eclipse.emf.ecore.EPackage;
  */
 public interface PiecewiseConstantPackage extends EPackage {
 
-	/**
-	 * The name of the package.
-	 */
 	String eNAME = "piecewiseconstant"; //$NON-NLS-1$
 
 	/**
@@ -52,19 +45,9 @@ public interface PiecewiseConstantPackage extends EPackage {
 	 */
 	String eNS_PREFIX = "piecewise"; //$NON-NLS-1$
 
-	/**
-	 * The single instance of the package. The first read of this field builds and
-	 * registers the package.
-	 */
 	PiecewiseConstantPackage eINSTANCE =
 			io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantPackageImpl.init();
 
-	/**
-	 * The classifier id of the
-	 * '{@link io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl
-	 * <em>Piecewise Constant Series</em>}' class. The factory reads this id to
-	 * decide which object it creates.
-	 */
 	int PIECEWISE_CONSTANT_SERIES = 0;
 
 	/**
@@ -86,61 +69,28 @@ public interface PiecewiseConstantPackage extends EPackage {
 	 */
 	int PIECEWISE_CONSTANT_SERIES__STEP_MODE = TypePackage.LINE_SERIES_FEATURE_COUNT + 0;
 
-	/**
-	 * The number of structural features of the '<em>Piecewise Constant Series</em>'
-	 * class. The series adds one feature to the features of
-	 * <code>LineSeries</code>.
-	 */
 	int PIECEWISE_CONSTANT_SERIES_FEATURE_COUNT = TypePackage.LINE_SERIES_FEATURE_COUNT + 1;
 
-	/**
-	 * Returns the meta object of the class '{@link PiecewiseConstantSeries
-	 * <em>Piecewise Constant Series</em>}'.
-	 *
-	 * @return the meta object of the class '<em>Piecewise Constant Series</em>'
-	 * @see PiecewiseConstantSeries
-	 */
 	EClass getPiecewiseConstantSeries();
 
 	/**
 	 * Returns the meta object of the attribute
 	 * '{@link PiecewiseConstantSeries#getStepMode <em>Step Mode</em>}'.
-	 *
-	 * @return the meta object of the attribute '<em>Step Mode</em>'
-	 * @see PiecewiseConstantSeries#getStepMode()
-	 * @see #getPiecewiseConstantSeries()
 	 */
 	EAttribute getPiecewiseConstantSeries_StepMode();
 
-	/**
-	 * Returns the meta object of the enumeration '{@link StepMode <em>Step
-	 * Mode</em>}'.
-	 *
-	 * @return the meta object of the enumeration '<em>Step Mode</em>'
-	 * @see StepMode
-	 */
 	EEnum getStepMode();
 
 	/**
 	 * Returns the factory that builds the objects of this model.
-	 *
-	 * @return the factory of this model
 	 */
 	PiecewiseConstantFactory getPiecewiseConstantFactory();
 
 	/**
 	 * The meta object of every class, of every feature and of the enumeration.
-	 * <p>
-	 * Constraints: each field reads {@link #eINSTANCE}. A read of any field of this
-	 * interface therefore builds and registers the package.
 	 */
 	interface Literals {
 
-		/**
-		 * The meta object of the
-		 * '{@link io.github.lextpf.birt.chart.piecewiseconstant.model.type.impl.PiecewiseConstantSeriesImpl
-		 * <em>Piecewise Constant Series</em>}' class.
-		 */
 		EClass PIECEWISE_CONSTANT_SERIES = eINSTANCE.getPiecewiseConstantSeries();
 
 		/**
