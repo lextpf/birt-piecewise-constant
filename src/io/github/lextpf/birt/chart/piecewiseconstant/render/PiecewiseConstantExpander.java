@@ -28,8 +28,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
  * caller, which is usually device pixels. The class does not use the chart
  * engine, so a test can call it without a started chart engine.
  * <p>
- * Side effects: none.
- * <p>
  * Non-obvious behaviour: the following rules keep the stock line renderer
  * working on the longer arrays.
  * <ul>
@@ -54,9 +52,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
  */
 public final class PiecewiseConstantExpander {
 
-	/**
-	 * Blocks instances. The class has only static members.
-	 */
 	private PiecewiseConstantExpander() {
 	}
 
@@ -76,27 +71,13 @@ public final class PiecewiseConstantExpander {
 	}
 
 	/**
-	 * Expands the data points of one series into the vertices of a piecewise
-	 * constant line.
+ * Expands the data points of one series into the vertices of a piecewise
+ * constant line.
 	 * <p>
 	 * Constraints: {@code base}, {@code value} and {@code isNull} must have the
 	 * same length. The caller must pass the same {@code connectMissingValue} flag
 	 * that the chart engine uses for this series.
-	 * <p>
-	 * Side effects: none. The method allocates new arrays and does not change its
-	 * inputs.
-	 * <p>
-	 * Non-obvious behaviour: a missing value never receives a corner vertex. If two
-	 * consecutive values are equal, then the method inserts no corner vertex.
 	 *
-	 * @param base                the category axis coordinate of every data point
-	 * @param value               the value axis coordinate of every data point; the
-	 *                            method copies the entry of a missing value through
-	 *                            without change
-	 * @param isNull              {@code true} for every data point that the
-	 *                            renderer treats as a missing value
-	 * @param mode                the step mode, which decides where the line steps
-	 *                            from one value to the next
 	 * @param connectMissingValue {@code true} if the renderer connects the data
 	 *                            points around a missing value instead of ending
 	 *                            the run
@@ -158,11 +139,6 @@ public final class PiecewiseConstantExpander {
 	 * renderer. If {@code connectMissingValue} is false, then the first missing
 	 * value after {@code i} ends the run.
 	 *
-	 * @param isNull              {@code true} for every data point that the
-	 *                            renderer treats as a missing value
-	 * @param i                   the index of the left data point
-	 * @param connectMissingValue {@code true} if the renderer connects the data
-	 *                            points around a missing value
 	 * @return the index of the next connected data point, or {@code -1} if the run
 	 *         ends at {@code i}
 	 */
@@ -188,27 +164,17 @@ public final class PiecewiseConstantExpander {
 	 */
 	private static final class Vertices {
 
-		/** The category axis coordinate of every vertex written so far. */
 		private final double[] base;
 
-		/** The value axis coordinate of every vertex written so far. */
 		private final double[] value;
 
 		/** For every vertex, the index of the data point whose value it carries. */
 		private final int[] owner;
 
-		/** For every vertex, {@code true} for a data point. */
 		private final boolean[] real;
 
-		/** The number of vertices written so far. */
 		private int size;
 
-		/**
-		 * Creates an empty collector.
-		 *
-		 * @param capacity the number of vertices the four arrays can hold; the caller
-		 *                 must not append more vertices than this number
-		 */
 		Vertices(int capacity) {
 			base = new double[capacity];
 			value = new double[capacity];
@@ -216,13 +182,6 @@ public final class PiecewiseConstantExpander {
 			real = new boolean[capacity];
 		}
 
-		/**
-		 * Appends one data point.
-		 *
-		 * @param b     the category axis coordinate
-		 * @param v     the value axis coordinate
-		 * @param index the index of the data point in the input arrays
-		 */
 		void point(double b, double v, int index) {
 			append(b, v, index, true);
 		}
@@ -251,15 +210,6 @@ public final class PiecewiseConstantExpander {
 			append(b, v, index, false);
 		}
 
-		/**
-		 * Writes one vertex and advances the size.
-		 *
-		 * @param b      the category axis coordinate
-		 * @param v      the value axis coordinate
-		 * @param index  the index of the data point whose value the vertex carries
-		 * @param isReal {@code true} for a data point, {@code false} for a corner
-		 *               vertex
-		 */
 		private void append(double b, double v, int index, boolean isReal) {
 			base[size] = b;
 			value[size] = v;
@@ -268,11 +218,6 @@ public final class PiecewiseConstantExpander {
 			size++;
 		}
 
-		/**
-		 * Returns the vertices, cut to their real length.
-		 *
-		 * @return a new expansion that holds copies of the four arrays
-		 */
 		PiecewiseConstantExpansion trim() {
 			return new PiecewiseConstantExpansion(Arrays.copyOf(base, size), Arrays.copyOf(value, size),
 					Arrays.copyOf(owner, size), Arrays.copyOf(real, size));
