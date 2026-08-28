@@ -30,39 +30,21 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  * starts the POJO {@code ServiceLauncher}, and
  * {@link Platform#getExtensionRegistry()} returns a registry.
  * <p>
- * Side effects: the extension starts a runtime that lives as long as the JVM,
- * and it loads {@code org.eclipse.birt.chart.model.impl.SerializerImpl}. It
- * never calls {@code Platform.shutdown()}. The runtime outlives the test class,
- * and surefire forks one JVM per test class.
- * <p>
- * Non-obvious behaviour: {@code SerializerImpl} and
- * {@code org.eclipse.birt.chart.model.util.ChartDynamicExtension} cache the
- * extension model packages in a static initializer. If a class initializer of
- * one of them runs before the runtime starts, then that cache stays empty for
- * the life of the JVM. The extension therefore loads {@code SerializerImpl}
- * after the runtime is up.
+ * It never calls {@code Platform.shutdown()}.
+ * The extension therefore loads {@code SerializerImpl} after the runtime is up.
+ *
+ * @see io.github.lextpf.birt.chart.piecewiseconstant.model.PiecewiseConstantModelLoader
  */
 public class ChartPlatformExtension implements BeforeAllCallback {
 
 	private static boolean started;
 
-	/**
-	 * @param context the JUnit context of the test class, not used
-	 * @throws ClassNotFoundException if {@code SerializerImpl} is not on the
-	 *                                classpath
-	 */
 	@Override
 	public void beforeAll(ExtensionContext context) throws ClassNotFoundException {
 		startPlatform();
 	}
 
-	/**
-	 * Starts the POJO runtime, and returns immediately on every call after the
-	 * first one.
-	 *
-	 * @throws ClassNotFoundException if {@code SerializerImpl} is not on the
-	 *                                classpath
-	 */
+	// Starts the POJO runtime, and returns immediately on every call after the first one.
 	private static synchronized void startPlatform() throws ClassNotFoundException {
 		if (started) {
 			return;
