@@ -35,8 +35,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
  * {@code PiecewiseConstantSetup}. If a developer renames or moves this class,
  * then the chart engine finds no renderer.
  * <p>
- * Side effects: none beyond the EMF notifications of the setters.
- * <p>
  * Non-obvious behaviour: the class implements one feature,
  * {@link PiecewiseConstantSeriesImpl#getStepMode <em>Step Mode</em>}.
  */
@@ -46,17 +44,9 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 	 * The default value of the '{@link #getStepMode() <em>Step Mode</em>}'
 	 * attribute. The value must stay equal to the default value of the attribute in
 	 * the meta model.
-	 *
-	 * @see #getStepMode()
 	 */
 	protected static final StepMode STEP_MODE_EDEFAULT = StepMode.AFTER_LITERAL;
 
-	/**
-	 * The current value of the '{@link #getStepMode() <em>Step Mode</em>}'
-	 * attribute.
-	 *
-	 * @see #getStepMode()
-	 */
 	protected StepMode stepMode = STEP_MODE_EDEFAULT;
 
 	/**
@@ -65,12 +55,6 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 	 */
 	protected boolean stepModeESet;
 
-	/**
-	 * Builds an empty series. The factory and {@link #copyInstance()} call this
-	 * constructor.
-	 *
-	 * @see PiecewiseConstantFactory#createPiecewiseConstantSeries()
-	 */
 	protected PiecewiseConstantSeriesImpl() {
 		super();
 	}
@@ -177,10 +161,6 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 	 * Constraints: BIRT's {@code ChartExtensionValueUpdater} calls this method by
 	 * reflection. The method must therefore keep this exact name, must stay
 	 * <code>public static</code> and must keep the return type {@link Series}.
-	 * <p>
-	 * Non-obvious behaviour: the method sets the set flag of the step mode and of
-	 * the inherited members that {@link #initialize()} touches. The serializer
-	 * therefore writes each of these members into the chart XML.
 	 *
 	 * @return a piecewise constant series with the set flags set
 	 */
@@ -195,8 +175,6 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 	 * <p>
 	 * Side effects: the method calls {@link #setStepMode(StepMode)}, so it also sets
 	 * the set flag of the step mode.
-	 * <p>
-	 * Note: a developer writes this method by hand. EMF does not generate it.
 	 */
 	@Override
 	protected void initialize() {
@@ -223,8 +201,6 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 	 * <p>
 	 * Non-obvious behaviour: the method writes the step mode field directly and
 	 * calls no setter. The set flag of the step mode therefore stays clear.
-	 * <p>
-	 * Note: a developer writes this method by hand. EMF does not generate it.
 	 */
 	@Override
 	protected void initDefault() {
@@ -232,13 +208,7 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 		stepMode = StepMode.AFTER_LITERAL;
 	}
 
-	/**
-	 * Returns the name that the chart engine shows for this series type.
-	 * <p>
-	 * Constraints: the plug-in does not translate this name.
-	 *
-	 * @return the display name of the series
-	 */
+	// Returns the name that the chart engine shows for this series type.
 	@Override
 	public String getDisplayName() {
 		return "Piecewise Constant Series"; //$NON-NLS-1$
@@ -266,20 +236,13 @@ public class PiecewiseConstantSeriesImpl extends LineSeriesImpl implements Piece
 	/**
 	 * Copies the members of another piecewise constant series into this series.
 	 * <p>
-	 * Constraints: the caller must pass a series that is not <code>null</code>.
-	 * {@link #copyInstance()} is the only caller in this plug-in.
-	 * <p>
 	 * Side effects: the method writes the step mode field directly and calls no
 	 * setter. It therefore sends no EMF notification, and it keeps the set flag of
 	 * the source series.
-	 *
-	 * @param src the series to copy the members from
 	 */
 	protected void set(PiecewiseConstantSeries src) {
 
 		super.set(src);
-
-		// attributes
 
 		stepMode = src.getStepMode();
 
