@@ -27,20 +27,11 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
  * <p>
  * Intent: the class builds the objects of the piecewise constant model, and it
  * converts the step mode between its literal string and its literal object.
- * <p>
- * Constraints: EMF calls the methods of this class while it reads or writes the
- * chart XML. The methods throw an {@link IllegalArgumentException} for a
- * classifier that this package does not hold.
- * <p>
- * Side effects: none.
  */
 public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements PiecewiseConstantFactory {
 
 	/**
 	 * Returns the factory of the piecewise constant package.
-	 * <p>
-	 * Intent: the field {@link PiecewiseConstantFactory#eINSTANCE} calls this
-	 * method. Callers must read that field and must not call this method directly.
 	 * <p>
 	 * Non-obvious behaviour: the method returns the registered factory when the
 	 * package is already in {@code EPackage.Registry.INSTANCE}. If the lookup throws
@@ -106,9 +97,6 @@ public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements Piecew
 	 * Constraints: the string must be the literal string of a step mode. The
 	 * comparison is case-sensitive.
 	 *
-	 * @param eDataType    the data type of the enumeration
-	 * @param initialValue the literal string, as written in the chart XML
-	 * @return the matching literal object
 	 * @throws IllegalArgumentException if no literal has this string
 	 */
 	public StepMode createStepModeFromString(EDataType eDataType, String initialValue) {
@@ -122,13 +110,6 @@ public class PiecewiseConstantFactoryImpl extends EFactoryImpl implements Piecew
 
 	/**
 	 * Writes a '<em>Step Mode</em>' literal as its literal string.
-	 * <p>
-	 * Constraints: if the value is <code>null</code>, then the method returns
-	 * <code>null</code>.
-	 *
-	 * @param eDataType     the data type of the enumeration
-	 * @param instanceValue the literal object
-	 * @return the literal string, as written in the chart XML
 	 */
 	public String convertStepModeToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
