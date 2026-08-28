@@ -35,16 +35,8 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension
 
 /**
  * Checks the geometry that {@link PiecewiseConstantLine} puts on the device.
- * <p>
- * Intent: each test renders the same chart twice, once with a stock
- * {@code LineSeries} and once with a piecewise constant series. The vertices of
- * the piecewise constant series must be the vertices of the reference chart
- * with the corner vertices inserted.
- * <p>
- * Non-obvious behaviour: the fixture builds both charts from the same options,
- * so the layout calculations are identical. The device coordinates of the real
- * data points are therefore equal bit for bit, and the tests compare them with
- * exact <code>double</code> equality.
+ *
+ * @see ChartFixtures
  */
 @ExtendWith(ChartPlatformExtension.class)
 class PiecewiseConstantGeometryTest {
@@ -66,8 +58,6 @@ class PiecewiseConstantGeometryTest {
 		return new Options().markersVisible(false);
 	}
 
-	// ------------------------------------------------------------ 1. the modes
-
 	@Test
 	void afterModePutsTheCornerAtTheBaseCoordinateOfTheRightPoint() throws Exception {
 		assertStaircase(bare(), StepMode.AFTER_LITERAL, VALUES, 4, "geometry-after");
@@ -83,26 +73,20 @@ class PiecewiseConstantGeometryTest {
 		assertStaircase(bare(), StepMode.CENTER_LITERAL, VALUES, 6, "geometry-center");
 	}
 
-	// ------------------------------------------------------------ 2. transposed
-
 	@Test
 	void transposedChartsStepAlongTheDeviceYAxis() throws Exception {
 		Options options = bare().transposed(true);
 		Oracle oracle = assertStaircase(options, StepMode.AFTER_LITERAL, VALUES, 4, "geometry-after-transposed");
 
-		// The category axis now runs down the device. The corner vertex of the AFTER
-		// mode therefore takes its y from the right data point and its x from the
-		// left one. The device draws each tread as a vertical line and each step as a
-		// horizontal line. The result is the mirror image of the chart that is not
-		// transposed.
+		// The category axis now runs down the device. The device draws each tread as a
+		// vertical line and each step as a horizontal line. The result is the mirror
+		// image of the chart that is not transposed.
 		double[] p0 = oracle.stock.get(0);
 		double[] p1 = oracle.stock.get(1);
 		double[] corner = oracle.step.get(1);
 		assertEquals(p0[0], corner[0], "the corner vertex keeps the value coordinate of the left data point");
 		assertEquals(p1[1], corner[1], "the corner vertex takes the base coordinate of the right data point");
 	}
-
-	// ----------------------------------------------------------- 3./4. missing
 
 	@Test
 	void aBrokenRunDrawsIsolatedPointsAndNoLine() throws Exception {
@@ -130,14 +114,10 @@ class PiecewiseConstantGeometryTest {
 		assertEquals(2, oracle.stock.size(), "the reference chart bridges the missing value with one segment");
 	}
 
-	// --------------------------------------------------------------- 5. flat
-
 	@Test
 	void twoEqualValuesFormAFlatStepWithoutACorner() throws Exception {
 		assertStaircase(bare(), StepMode.AFTER_LITERAL, new Double[] { 5.0, 5.0, 3.0 }, 3, "geometry-flat");
 	}
-
-	// ------------------------------------------------------- 6./7. many series
 
 	@Test
 	void everyStackedSeriesFormsItsOwnStaircase() throws Exception {
@@ -154,8 +134,6 @@ class PiecewiseConstantGeometryTest {
 		assertStaircasePerSeries(bare().percent(true).stacked(true).secondValues(SECOND_VALUES), StepMode.AFTER_LITERAL,
 				"geometry-percent");
 	}
-
-	// ------------------------------------------------------------ 8./9. depth
 
 	@Test
 	void twoDimensionalWithDepthStepsLikeThePlainTwoDimensionalChart() throws Exception {
@@ -176,8 +154,6 @@ class PiecewiseConstantGeometryTest {
 				"geometry-3d"));
 	}
 
-	// ------------------------------------------------------------- 10. curve
-
 	@Test
 	void aCurveSeriesStillSteps() throws Exception {
 		// The layout does not depend on the curve flag, so the plain chart is a valid
@@ -192,8 +168,6 @@ class PiecewiseConstantGeometryTest {
 		assertAxisParallel(steps);
 		assertVertices(staircase(stock, StepMode.AFTER_LITERAL, false), vertices(steps));
 	}
-
-	// ------------------------------------------------------------ 11. shadow
 
 	@Test
 	void theShadowIsTheStaircaseOffsetDownwards() throws Exception {
@@ -216,8 +190,6 @@ class PiecewiseConstantGeometryTest {
 		assertAxisParallel(steps);
 	}
 
-	// ------------------------------------------------- 12. markers and labels
-
 	@Test
 	void markersAndLabelsDoNotChangeTheLineGeometry() throws Exception {
 		Options options = new Options().markersVisible(true).labelsVisible(true);
@@ -231,8 +203,6 @@ class PiecewiseConstantGeometryTest {
 				"a connected run has no isolated data point, and the device fills the circle markers but"
 						+ " never strokes them, so it strokes no oval at all");
 	}
-
-	// ------------------------------------------------------- 13. degenerate
 
 	@Test
 	void aSinglePointDrawsNoSegment() throws Exception {
@@ -270,33 +240,12 @@ class PiecewiseConstantGeometryTest {
 		assertEquals(stock.getMessage(), step.getMessage(), "both series must fail with the same message");
 	}
 
-	// ---------------------------------------------------------------- helpers
-
-	/**
-	 * The two vertex lists of one comparison: {@code stock} contains the vertices of
-	 * the reference chart, and {@code step} contains the vertices of the piecewise
-	 * constant chart.
-	 */
 	private record Oracle(List<double[]> stock, List<double[]> step) {
 	}
 
 	/**
 	 * Renders the reference chart and the piecewise constant chart with the same
-	 * options. The method then asserts that the piecewise constant chart contains
-	 * the vertices of the reference chart plus the corner vertices of
-	 * <code>mode</code>.
-	 * <p>
-	 * Side effects: the method writes two PNG files into the test output
-	 * directory.
-	 *
-	 * @param options          the fixture options of both charts
-	 * @param mode             the step mode
-	 * @param values           the values of the value series
-	 * @param expectedSegments the number of segments the piecewise constant line
-	 *                         must contain
-	 * @param name             the base name of the two PNG files
-	 * @return both vertex lists
-	 * @throws Exception if the chart engine fails
+	 * options.
 	 */
 	private Oracle assertStaircase(Options options, StepMode mode, Double[] values, int expectedSegments, String name)
 			throws Exception {
@@ -314,18 +263,6 @@ class PiecewiseConstantGeometryTest {
 	/**
 	 * Runs the comparison of {@link #assertStaircase} for a chart with more than
 	 * one value series.
-	 * <p>
-	 * The method splits the recorded segments per series by the identity of the
-	 * {@code StructureSource} that each segment carries. It then compares every
-	 * value series with the same value series of the reference chart.
-	 * <p>
-	 * Side effects: the method writes two PNG files into the test output
-	 * directory.
-	 *
-	 * @param options the fixture options of both charts
-	 * @param mode    the step mode
-	 * @param name    the base name of the two PNG files
-	 * @throws Exception if the chart engine fails
 	 */
 	private void assertStaircasePerSeries(Options options, StepMode mode, String name) throws Exception {
 		List<List<Seg>> stock = render(ChartFixtures.lineChart(VALUES, options), name + "-oracle").segmentGroups();
@@ -341,15 +278,6 @@ class PiecewiseConstantGeometryTest {
 		}
 	}
 
-	/**
-	 * Renders one chart to <code>&lt;name&gt;.png</code> in the test output
-	 * directory.
-	 *
-	 * @param chart the chart to render
-	 * @param name  the base name of the PNG file
-	 * @return the device that recorded the render
-	 * @throws Exception if the chart engine fails
-	 */
 	private static CapturingPngRenderer render(ChartWithAxes chart, String name) throws Exception {
 		CapturingPngRenderer device = new CapturingPngRenderer();
 		CapturingPngRenderer.render(chart, new File(CapturingPngRenderer.outputDirectory(), name + ".png"), device);
@@ -357,12 +285,7 @@ class PiecewiseConstantGeometryTest {
 	}
 
 	/**
-	 * Turns a run of segments into its vertex list. The method also asserts that
-	 * the run is connected: every segment starts where the segment before it
-	 * ended.
-	 *
-	 * @param segments the recorded segments of one value series
-	 * @return the vertices of the run, in drawing order
+	 * Turns a run of segments into its vertex list.
 	 */
 	private static List<double[]> vertices(List<Seg> segments) {
 		assertTrue(!segments.isEmpty(), "the value series drew no segment");
@@ -383,8 +306,6 @@ class PiecewiseConstantGeometryTest {
 
 	/**
 	 * Asserts that every segment is a tread or a step, and never a diagonal.
-	 *
-	 * @param segments the recorded segments of one value series
 	 */
 	private static void assertAxisParallel(List<Seg> segments) {
 		for (Seg segment : segments) {
@@ -396,12 +317,6 @@ class PiecewiseConstantGeometryTest {
 	/**
 	 * Computes the vertices that the piecewise constant line must contain over a run
 	 * of data point vertices.
-	 *
-	 * @param points     the vertices of the reference chart
-	 * @param mode       the step mode
-	 * @param transposed {@code true} if the base coordinate and the value
-	 *                   coordinate swap device axes
-	 * @return the expected vertices, in drawing order
 	 */
 	private static List<double[]> staircase(List<double[]> points, StepMode mode, boolean transposed) {
 		// In a transposed chart the category axis runs down the device y axis and the
@@ -437,13 +352,6 @@ class PiecewiseConstantGeometryTest {
 		return out;
 	}
 
-	/**
-	 * @param baseCoordinate  the coordinate along the category axis
-	 * @param valueCoordinate the coordinate along the value axis
-	 * @param base            the index of the base coordinate in a device point
-	 * @param value           the index of the value coordinate in a device point
-	 * @return one corner vertex as a device point
-	 */
 	private static double[] corner(double baseCoordinate, double valueCoordinate, int base, int value) {
 		double[] point = new double[2];
 		point[base] = baseCoordinate;
@@ -453,9 +361,6 @@ class PiecewiseConstantGeometryTest {
 
 	/**
 	 * Compares two vertex lists as text, so that a failure shows both lists.
-	 *
-	 * @param expected the expected vertices
-	 * @param actual   the recorded vertices
 	 */
 	private static void assertVertices(List<double[]> expected, List<double[]> actual) {
 		assertEquals(format(expected), format(actual), "vertex list");
