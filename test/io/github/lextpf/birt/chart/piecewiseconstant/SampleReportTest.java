@@ -53,14 +53,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension
  * Intent: {@link RuntimeSmokeIT} runs only if somebody points
  * {@code -Dbirt.runtime.dir} at an unpacked distribution. Without this class no
  * normal build would check the report resource.
- * <p>
- * Non-obvious behaviour: the parse in this class proves that the report is well
- * formed XML. The parse also proves that the report is wired the way the report
- * engine expects. The class then reads the embedded chart XML back through
- * {@code SerializerImpl}. That read proves that the report carries a piecewise
- * constant series bound to the columns of the report. Without that check, a
- * typing error in the CDATA section would appear only on a machine that has the
- * runtime.
  */
 @ExtendWith(ChartPlatformExtension.class)
 class SampleReportTest {
@@ -73,10 +65,6 @@ class SampleReportTest {
 	 * Parses the sample report from the test classpath into {@link #report}.
 	 * <p>
 	 * Constraints: the parser resolves no external DTD and no external schema.
-	 *
-	 * @throws IOException                  if the resource cannot be read
-	 * @throws SAXException                 if the resource is not well formed XML
-	 * @throws ParserConfigurationException if the parser cannot be created
 	 */
 	@BeforeAll
 	static void parseTheSampleReport() throws IOException, SAXException, ParserConfigurationException {
@@ -173,12 +161,7 @@ class SampleReportTest {
 		assertEquals(250.0, bounds.getHeight(), 0.0, "the chart block must carry the height of the report item");
 	}
 
-	/**
-	 * @return the chart XML out of the CDATA section of the
-	 *         {@code xmlRepresentation} property
-	 * @throws AssertionError if the report has no {@code xmlRepresentation}
-	 *                        property
-	 */
+	// The chart XML out of the CDATA section of the xmlRepresentation property
 	private static String chartXml() {
 		for (Element property : elements(report.getElementsByTagName("xml-property"))) {
 			if ("xmlRepresentation".equals(property.getAttribute("name"))) {
@@ -204,12 +187,7 @@ class SampleReportTest {
 		return found;
 	}
 
-	/**
-	 * @param parent the element to read
-	 * @param name   the value of the {@code name} attribute
-	 * @return the text of the {@code <property name="..."/>} child with that name
-	 * @throws AssertionError if the element has no such child
-	 */
+	// The text of the <property name="..."/> child with that name
 	private static String property(Element parent, String name) {
 		for (Element property : elements(parent.getChildNodes())) {
 			if ("property".equals(property.getNodeName()) && name.equals(property.getAttribute("name"))) {
@@ -219,10 +197,7 @@ class SampleReportTest {
 		throw new AssertionError("no property named " + name + " on <" + parent.getNodeName() + ">");
 	}
 
-	/**
-	 * @param parent the element to read
-	 * @return the names of the {@code <list-property>} children, in document order
-	 */
+	// The names of the <list-property> children, in document order
 	private static List<String> listPropertyNames(Element parent) {
 		List<String> names = new ArrayList<>();
 		for (Element list : elements(parent.getChildNodes())) {
@@ -233,10 +208,7 @@ class SampleReportTest {
 		return names;
 	}
 
-	/**
-	 * @param dataSet the {@code <script-data-set>} element
-	 * @return the column names that the data set declares in its result set hints
-	 */
+	// The column names that the data set declares in its result set hints
 	private static List<String> columnNames(Element dataSet) {
 		List<String> names = new ArrayList<>();
 		for (Element list : elements(dataSet.getChildNodes())) {
@@ -249,12 +221,7 @@ class SampleReportTest {
 		return names;
 	}
 
-	/**
-	 * @param parent the element to read
-	 * @param name   the value of the {@code name} attribute
-	 * @return the script text of the {@code <method>} child with that name
-	 * @throws AssertionError if the element has no such child
-	 */
+	// The script text of the <method> child with that name
 	private static String methodBody(Element parent, String name) {
 		for (Element method : elements(parent.getChildNodes())) {
 			if ("method".equals(method.getNodeName()) && name.equals(method.getAttribute("name"))) {
