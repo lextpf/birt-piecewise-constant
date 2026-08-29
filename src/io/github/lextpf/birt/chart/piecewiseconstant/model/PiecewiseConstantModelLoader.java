@@ -18,10 +18,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstan
 /**
  * Hands the EMF package of the piecewise constant series to the chart engine.
  * <p>
- * Intent: the chart engine needs this package to read and write the series in
- * the chart XML. BIRT collects the package through the
- * <code>org.eclipse.birt.chart.engine.charttypes</code> extension point.
- * <p>
  * Constraints: BIRT builds this class through the extension point, so the class
  * must stay public and must keep a public constructor without arguments. The
  * class name and the namespace URI must stay in the <code>charttypes</code>
@@ -36,9 +32,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.PiecewiseConstan
  */
 public class PiecewiseConstantModelLoader implements IExtChartModelLoader {
 
-	/**
-	 * Builds the loader. BIRT needs a public constructor without arguments here.
-	 */
 	public PiecewiseConstantModelLoader() {
 		super();
 	}
@@ -48,8 +41,6 @@ public class PiecewiseConstantModelLoader implements IExtChartModelLoader {
 	 * <p>
 	 * Side effects: the first call builds the package and puts it into the global
 	 * {@code EPackage.Registry.INSTANCE}.
-	 *
-	 * @return the piecewise constant package
 	 */
 	@Override
 	public EPackage getChartTypePackage() {
