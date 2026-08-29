@@ -37,14 +37,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.CapturingPngRenderer;
  * <p>
  * Intent: this test is the end-to-end proof that the jar is a well formed BIRT
  * plug-in.
- * <p>
- * Constraints: the test runs only if the system property
- * {@code birt.runtime.dir} names an unpacked distribution. The distribution is
- * a download of about 100 MB and is not part of the build. Without
- * {@code -Dbirt.runtime.dir} JUnit reports the test as skipped. The first
- * command builds the jar. The second command runs this test against the
- * distribution:
- *
  * <pre>
  * .\build.ps1
  * .\test.ps1 -Test RuntimeSmokeIT -Runtime C:\birt-runtime-4.24.0
@@ -64,9 +56,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.CapturingPngRenderer;
 @EnabledIfSystemProperty(named = "birt.runtime.dir", matches = ".+")
 class RuntimeSmokeIT {
 
-	/**
-	 * The name of the jar, in the {@code build} directory and in the POJO runtime.
-	 */
 	private static final String BUNDLE_JAR = "io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar";
 
 	/** The name of the sample report on the test classpath. */
@@ -104,12 +93,6 @@ class RuntimeSmokeIT {
 	 * Side effects: the method clears the {@code BIRT_HOME} system property and
 	 * replaces the context class loader of the thread. It restores both before it
 	 * returns.
-	 *
-	 * @param lib    the {@code ReportEngine/lib} directory of the distribution
-	 * @param design the report design to run
-	 * @param html   the HTML file to write
-	 * @return the exit code of the runner, 0 for success
-	 * @throws Exception if the runner cannot be loaded or called
 	 */
 	private static int runReport(Path lib, File design, File html) throws Exception {
 		String[] arguments = { "-f", "HTML", "-o", html.getAbsolutePath(), "-m", "RunAndRender",
@@ -132,11 +115,6 @@ class RuntimeSmokeIT {
 		}
 	}
 
-	/**
-	 * @param lib the {@code ReportEngine/lib} directory of the distribution
-	 * @return every jar of the distribution, and the jar of this plug-in last
-	 * @throws IOException if the method cannot list the directory
-	 */
 	private static URL[] runtimeClasspath(Path lib) throws IOException {
 		List<URL> urls = new ArrayList<>();
 		try (Stream<Path> entries = Files.list(lib)) {
@@ -169,13 +147,6 @@ class RuntimeSmokeIT {
 		return classes;
 	}
 
-	/**
-	 * Copies the sample report out of the test classpath into the test output
-	 * directory, so that the report engine can open it as a file.
-	 *
-	 * @return the copied report design file
-	 * @throws IOException if the method cannot copy the resource
-	 */
 	private static File extractSampleReport() throws IOException {
 		File design = new File(CapturingPngRenderer.outputDirectory(), SAMPLE_REPORT);
 		try (InputStream in = RuntimeSmokeIT.class.getClassLoader().getResourceAsStream(SAMPLE_REPORT)) {
