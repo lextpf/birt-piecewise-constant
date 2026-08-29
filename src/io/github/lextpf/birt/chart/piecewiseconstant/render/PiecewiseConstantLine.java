@@ -41,9 +41,6 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
  * {@code org.eclipse.birt.chart.engine.modelrenderers} extension point. The
  * class must therefore keep a public constructor without arguments.
  * <p>
- * Side effects: none. Each hook builds new arrays and does not change the arrays
- * of the caller.
- * <p>
  * Non-obvious behaviour: the stock renderer indexes the {@code Location[]} array
  * with the index of the {@code DataPointHints[]} array. Both arrays must
  * therefore keep the same length and the same index meaning. Every corner vertex
@@ -58,23 +55,11 @@ import io.github.lextpf.birt.chart.piecewiseconstant.model.type.StepMode;
  */
 public class PiecewiseConstantLine extends Line {
 
-	/**
-	 * Creates the renderer.
-	 * <p>
-	 * Constraints: the chart engine calls this constructor through the model
-	 * renderer extension point. The constructor must therefore stay public and
-	 * without arguments.
-	 */
 	public PiecewiseConstantLine() {
 		super();
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * Intent: this override replaces the laid out vertices with the vertices of
-	 * the piecewise constant line. It then calls {@code super} to draw them.
-	 */
+	// This override replaces the laid out vertices with the vertices of the piecewise constant line.
 	@Override
 	protected void renderDataPoints(IPrimitiveRenderer ipr, Plot p, ISeriesRenderingHints srh, DataPointHints[] dpha,
 			LineAttributes lia, Location[] loa, boolean bShowAsTape, double dTapeWidth, Fill paletteEntry,
@@ -84,12 +69,7 @@ public class PiecewiseConstantLine extends Line {
 				usePaletteLineColor);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * Intent: the shadow follows the line, so this override expands the arrays in
-	 * the same way as {@link #renderDataPoints}.
-	 */
+	// The shadow follows the line, so this override expands the arrays in the same way as renderDataPoints.
 	@Override
 	protected void renderShadow(IPrimitiveRenderer ipr, Plot p, LineAttributes lia, Location[] loa, boolean bShowAsTape,
 			DataPointHints[] dpha) throws ChartException {
@@ -117,12 +97,7 @@ public class PiecewiseConstantLine extends Line {
 				usePaletteLineColor);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * <p>
-	 * Intent: the shadow follows the line, so this hook takes the same path as
-	 * {@link #renderAsCurve}.
-	 */
+	// The shadow follows the line, so this hook takes the same path as renderAsCurve.
 	@Override
 	protected void renderShadowAsCurve(IPrimitiveRenderer ipr, LineAttributes lia, ISeriesRenderingHints srh,
 			Location[] loa, boolean bShowAsTape, double tapeWidth) throws ChartException {
@@ -132,22 +107,6 @@ public class PiecewiseConstantLine extends Line {
 	/**
 	 * Builds the vertices of the piecewise constant line from a laid out point
 	 * list.
-	 * <p>
-	 * Constraints: {@code dpha} and {@code loa} must have the same length and the
-	 * same index meaning. In 3D every entry of {@code loa} must be a
-	 * {@link Location3D}.
-	 * <p>
-	 * Side effects: none. The method allocates new arrays and does not change its
-	 * inputs.
-	 * <p>
-	 * Non-obvious behaviour: a corner vertex reuses the {@link DataPointHints} of
-	 * the data point whose value it carries. A vertex of a real data point keeps
-	 * the {@link Location} instance of that data point, so the stock renderer sees
-	 * the original object.
-	 *
-	 * @param dpha the data point hints, one entry per data point
-	 * @param loa  the device locations, aligned index by index with {@code dpha}
-	 * @return the two longer arrays, still aligned index by index
 	 */
 	private Expanded expand(DataPointHints[] dpha, Location[] loa) {
 		boolean is3D = isDimension3D();
@@ -205,13 +164,6 @@ public class PiecewiseConstantLine extends Line {
 
 	/**
 	 * The two arrays that {@link PiecewiseConstantLine#expand} returns.
-	 * <p>
-	 * Constraints: both arrays have the same length and the same index meaning.
-	 * The caller must keep that alignment, because the stock renderer indexes
-	 * {@code loa} with an index of {@code dpha}.
-	 *
-	 * @param dpha the data point hints, one entry per vertex
-	 * @param loa  the device locations of the vertices
 	 */
 	private record Expanded(DataPointHints[] dpha, Location[] loa) {
 	}
