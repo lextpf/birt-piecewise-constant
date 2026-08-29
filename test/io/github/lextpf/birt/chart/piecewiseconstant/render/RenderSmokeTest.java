@@ -48,12 +48,10 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartPlatformExtension
  * Intent: {@link PiecewiseConstantGeometryTest} constructs its device class
  * directly. This class takes the devices from the extension registry under
  * their <code>dv.PNG</code> and <code>dv.SVG</code> ids, which is the way an
- * application gets them. The tests therefore also prove that the piecewise
- * constant series works with a device that knows nothing about it.
+ * application gets them.
  * <p>
- * Non-obvious behaviour: the assertions are shallow on purpose. They test for a
- * file that is not empty. They test for a drawn path in the SVG file. They test
- * for a transparent background in the PNG file. The images are the result that a
+ * Non-obvious behaviour: the assertions are shallow on purpose.
+ * The images are the result that a
  * reader must look at.
  */
 @ExtendWith(ChartPlatformExtension.class)
@@ -70,8 +68,9 @@ class RenderSmokeTest {
 
 	/**
 	 * The factor that {@link CapturingPngRenderer#EXPORT_DPI} applies to those
-	 * bounds. The chart engine measures a chart in points, that is 1/72 inch. It
-	 * scales the device bounds by <code>dpi / 72</code> before the device draws.
+	 * bounds.
+	 *
+	 * @see CapturingPngRenderer#EXPORT_DPI
 	 */
 	private static final int EXPORT_SCALE = CapturingPngRenderer.EXPORT_DPI / 72;
 
@@ -152,20 +151,12 @@ class RenderSmokeTest {
 		return render(chart, "dv.PNG", fileName);
 	}
 
-	/**
-	 * @param caption the caption of the rendered chart
-	 * @return new options with that caption
-	 */
 	private static Options titled(String caption) {
 		return new Options().title(caption);
 	}
 
 	/**
 	 * Counts the pixels that the chart drew inside the plot area.
-	 *
-	 * @param image a rendered chart
-	 * @return the number of pixels in the middle half of the image that are not
-	 *         fully transparent. The middle half is inside the plot area.
 	 */
 	private static int drawnPixels(BufferedImage image) {
 		int drawn = 0;
@@ -181,15 +172,6 @@ class RenderSmokeTest {
 
 	/**
 	 * Renders one chart with a device of the extension registry.
-	 * <p>
-	 * Side effects: the method writes the output file into the test output
-	 * directory.
-	 *
-	 * @param chart    the chart to render
-	 * @param deviceId the extension registry id of the device
-	 * @param fileName the name of the output file
-	 * @return the output file
-	 * @throws Exception if the chart engine fails
 	 */
 	private static File render(Chart chart, String deviceId, String fileName) throws Exception {
 		File out = new File(CapturingPngRenderer.outputDirectory(), fileName);
