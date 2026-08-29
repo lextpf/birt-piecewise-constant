@@ -64,24 +64,11 @@ import io.github.lextpf.birt.chart.piecewiseconstant.test.ChartFixtures.Options;
 @TestMethodOrder(OrderAnnotation.class)
 class StandaloneFallbackTest {
 
-	/**
-	 * Three data points on the categories A, B and C. The line makes two steps and
-	 * has four segments.
-	 */
+	// The line makes two steps and has four segments.
 	private static final Double[] VALUES = { 5.0, 9.0, 3.0 };
 
 	private static PluginSettings settings;
 
-	/**
-	 * Creates the {@link PluginSettings} singleton with the {@code STANDALONE}
-	 * flag.
-	 * <p>
-	 * Constraints: this method must run before any other class in this JVM creates
-	 * the singleton with a runtime behind it.
-	 * <p>
-	 * Side effects: the singleton is static, and it keeps the flag for the life of
-	 * the JVM.
-	 */
 	@BeforeAll
 	static void createStandalonePluginSettings() {
 		PlatformConfig config = new PlatformConfig();
@@ -161,11 +148,6 @@ class StandaloneFallbackTest {
 	 * check, and every lookup stops at the first match. A second registration is
 	 * therefore invisible through the public API. The array is the only place
 	 * where a test can observe the guard in {@link PiecewiseConstantSetup}.
-	 *
-	 * @param seriesClassName the fully qualified name of the series
-	 *                        implementation class
-	 * @return the number of entries that name that class
-	 * @throws AssertionError if the field is no longer readable by reflection
 	 */
 	private static int registeredSeriesEntries(String seriesClassName) {
 		try {
