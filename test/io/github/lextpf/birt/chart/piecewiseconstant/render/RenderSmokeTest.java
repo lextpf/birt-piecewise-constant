@@ -77,26 +77,26 @@ class RenderSmokeTest {
 	@Test
 	void everyStepModeRendersToPng() throws Exception {
 		renderPng(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES,
-				titled("Piecewise constant · After")), "piecewise-constant-after.png");
+				titled("Piecewise constant - After")), "piecewise-constant-after.png");
 		renderPng(ChartFixtures.piecewiseConstantChart(StepMode.BEFORE_LITERAL, VALUES,
-				titled("Piecewise constant · Before")), "piecewise-constant-before.png");
+				titled("Piecewise constant - Before")), "piecewise-constant-before.png");
 		renderPng(ChartFixtures.piecewiseConstantChart(StepMode.CENTER_LITERAL, VALUES,
-				titled("Piecewise constant · Center")), "piecewise-constant-center.png");
+				titled("Piecewise constant - Center")), "piecewise-constant-center.png");
 	}
 
 	@Test
 	void everyStepModeRendersTransposedToPng() throws Exception {
 		renderPng(
 				ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES,
-						titled("Piecewise constant · After (transposed)").transposed(true)),
+						titled("Piecewise constant - After (transposed)").transposed(true)),
 				"piecewise-constant-after-transposed.png");
 		renderPng(
 				ChartFixtures.piecewiseConstantChart(StepMode.BEFORE_LITERAL, VALUES,
-						titled("Piecewise constant · Before (transposed)").transposed(true)),
+						titled("Piecewise constant - Before (transposed)").transposed(true)),
 				"piecewise-constant-before-transposed.png");
 		renderPng(
 				ChartFixtures.piecewiseConstantChart(StepMode.CENTER_LITERAL, VALUES,
-						titled("Piecewise constant · Center (transposed)").transposed(true)),
+						titled("Piecewise constant - Center (transposed)").transposed(true)),
 				"piecewise-constant-center-transposed.png");
 	}
 
@@ -104,23 +104,23 @@ class RenderSmokeTest {
 	void missingValuesRenderToPng() throws Exception {
 		Double[] values = { 5.0, null, 3.0 };
 		renderPng(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, values,
-				titled("Piecewise constant · null gap").connectMissingValue(false)), "piecewise-constant-null-gap.png");
+				titled("Piecewise constant - null gap").connectMissingValue(false)), "piecewise-constant-null-gap.png");
 		renderPng(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, values,
-				titled("Piecewise constant · null bridged").connectMissingValue(true)),
+				titled("Piecewise constant - null bridged").connectMissingValue(true)),
 				"piecewise-constant-null-connected.png");
 	}
 
 	@Test
 	void stackedSeriesRenderToPng() throws Exception {
 		renderPng(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES,
-				titled("Piecewise constant · stacked").stacked(true).secondValues(SECOND_VALUES)),
+				titled("Piecewise constant - stacked").stacked(true).secondValues(SECOND_VALUES)),
 				"piecewise-constant-stacked.png");
 	}
 
 	@Test
 	void theRenderedPngKeepsItsTransparentBackground() throws Exception {
 		File png = renderPng(ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES,
-				titled("Piecewise constant · After")), "piecewise-constant-after.png");
+				titled("Piecewise constant - After")), "piecewise-constant-after.png");
 
 		BufferedImage image = ImageIO.read(png);
 
@@ -140,7 +140,7 @@ class RenderSmokeTest {
 	void aPiecewiseConstantLineRendersToSvg() throws Exception {
 		File svg = render(
 				ChartFixtures.piecewiseConstantChart(StepMode.AFTER_LITERAL, VALUES,
-						titled("Piecewise constant · After")),
+						titled("Piecewise constant - After")),
 				"dv.SVG", "piecewise-constant-after.svg");
 
 		String document = Files.readString(svg.toPath(), StandardCharsets.UTF_8);
