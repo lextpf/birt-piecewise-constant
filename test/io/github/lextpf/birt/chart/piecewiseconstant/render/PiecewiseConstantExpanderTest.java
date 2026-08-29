@@ -46,12 +46,6 @@ class PiecewiseConstantExpanderTest {
 	/**
 	 * Compares one expansion with the four expected arrays, and prints all four
 	 * actual arrays if one comparison fails.
-	 *
-	 * @param actual the expansion under test
-	 * @param base   the expected base coordinates
-	 * @param value  the expected value coordinates
-	 * @param owner  the expected owner index per vertex
-	 * @param real   the expected real flag per vertex
 	 */
 	private static void assertExpansion(PiecewiseConstantExpansion actual, double[] base, double[] value, int[] owner,
 			boolean[] real) {
@@ -273,19 +267,6 @@ class PiecewiseConstantExpanderTest {
 	/**
 	 * Asserts that every corner vertex carries the value of a real data point that
 	 * is not a missing value.
-	 * <p>
-	 * If <code>connectMissingValue</code> is false, then a missing value also
-	 * breaks the run. No corner vertex can then stand next to a missing value, and
-	 * the detection of isolated data points in the chart engine keeps working. If
-	 * <code>connectMissingValue</code> is true, then the data point seeker skips
-	 * every missing value. The corner vertex of a bridged pair can then stand
-	 * directly before the run of missing values.
-	 *
-	 * @param out                 the expansion under test
-	 * @param isNull              one flag per input point, true for a missing
-	 *                            value
-	 * @param connectMissingValue the flag the expansion ran with
-	 * @param context             the input and output text of the failure message
 	 */
 	private static void assertCornersBelongToRealPoints(PiecewiseConstantExpansion out, boolean[] isNull,
 			boolean connectMissingValue, String context) {
@@ -309,12 +290,6 @@ class PiecewiseConstantExpanderTest {
 	/**
 	 * Asserts that every pair of vertices that the data point seeker joins is axis
 	 * parallel. Two such vertices differ in exactly one coordinate.
-	 *
-	 * @param out                 the expansion under test
-	 * @param isNull              one flag per input point, true for a missing
-	 *                            value
-	 * @param connectMissingValue the flag the expansion ran with
-	 * @param context             the input and output text of the failure message
 	 */
 	private static void assertConnectedSegmentsAreAxisParallel(PiecewiseConstantExpansion out, boolean[] isNull,
 			boolean connectMissingValue, String context) {
@@ -341,11 +316,6 @@ class PiecewiseConstantExpanderTest {
 	/**
 	 * Asserts that the real vertices are the input points, unchanged and in the
 	 * input order.
-	 *
-	 * @param out     the expansion under test
-	 * @param base    the base coordinates of the input points
-	 * @param value   the value coordinates of the input points
-	 * @param context the input and output text of the failure message
 	 */
 	private static void assertRealVerticesAreTheInput(PiecewiseConstantExpansion out, double[] base, double[] value,
 			String context) {
@@ -371,13 +341,6 @@ class PiecewiseConstantExpanderTest {
 		assertArrayEquals(expectedOwner, realOwner, "real owner sequence; " + context);
 	}
 
-	/**
-	 * @param out    the expansion under test
-	 * @param k      the index of one vertex
-	 * @param isNull one flag per input point, true for a missing value
-	 * @return {@code true} if the vertex is a real data point and that data point
-	 *         is a missing value
-	 */
 	private static boolean isNullVertex(PiecewiseConstantExpansion out, int k, boolean[] isNull) {
 		return out.real[k] && isNull[out.owner[k]];
 	}
