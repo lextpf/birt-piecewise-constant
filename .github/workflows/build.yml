@@ -63,7 +63,7 @@ jobs:
       # root and download-artifact restores them straight into build/.
       # This is the only place in the repo that uploads "plugin-jar".
       - name: Upload the bundle jars
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: plugin-jar
           path: build/*.jar
