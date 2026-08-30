@@ -24,7 +24,7 @@ jobs:
     name: verify tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Full history and refs/remotes/origin/*, for the ancestry check.
           fetch-depth: 0
@@ -111,7 +111,7 @@ jobs:
       contents: write
     steps:
       # For .github/release-notes/<tag>.md - the jars come from the artifact.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download the bundle jars
         uses: actions/download-artifact@v4
