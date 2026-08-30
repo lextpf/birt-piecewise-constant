@@ -1,0 +1,149 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+# A force-pushed tag supersedes the run still in flight for that tag - the
+# in-flight run (and every job of the workflows it called) is cancelled.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+# Ceiling for the called workflows: permissions can only be reduced down the
+# chain, never elevated, so this must be at least what build.yml/test.yml ask
+# for. Only the release job below widens it, for itself.
+permissions:
+  contents: read
+
+jobs:
+  # Ten seconds of shell before anything downloads 100 MB of BIRT runtime.
+  # No Maven: `mvn help:evaluate` would resolve an unpinned third-party plugin
+  # from Central into the release path, and the answer is one sed away.
+  verify-tag:
+    name: verify tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and refs/remotes/origin/*, for the ancestry check.
+          fetch-depth: 0
+
+      - name: Check the tag against the pom and the OSGi manifest
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+
+          # pom.xml has no <parent>, so the first <version> in document order
+          # is <project><version> - every dependency version sits below
+          # <dependencyManagement>, ~40 lines further down. Assert the premise
+          # so that adding a parent one day fails loudly instead of silently
+          # comparing the tag against the parent's version.
+          if grep -q '<parent>' pom.xml; then
+            echo "::error::pom.xml gained a <parent> - the first <version> is no longer the project version"
+            exit 1
+          fi
+          pom_version="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)"
+
+          # The OSGi loader reads this, not the pom; drift here ships a jar
+          # whose manifest disagrees with its own filename.
+          bundle_version="$(sed -n 's/^Bundle-Version: *//p' META-INF/MANIFEST.MF | tr -d '\r' | head -1)"
+
+          echo "tag=$tag_version  pom=$pom_version  manifest=$bundle_version"
+          [ -n "$pom_version" ]    || { echo "::error::no <version> in pom.xml"; exit 1; }
+          [ -n "$bundle_version" ] || { echo "::error::no Bundle-Version in META-INF/MANIFEST.MF"; exit 1; }
+
+          if [ "$pom_version" != "$tag_version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME says '$tag_version' but pom.xml says '$pom_version' - bump the pom or retag"
+            exit 1
+          fi
+          if [ "$bundle_version" != "$tag_version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME says '$tag_version' but Bundle-Version is '$bundle_version' - fix the manifest or retag"
+            exit 1
+          fi
+
+      - name: Check the release notes exist
+        run: |
+          set -euo pipefail
+          notes=".github/release-notes/${GITHUB_REF_NAME}.md"
+          test -f "$notes" || {
+            echo "::error::$notes is missing - write the release body before tagging"
+            exit 1
+          }
+          echo "release body: $notes"
+
+      - name: Check the tagged commit is on main
+        run: |
+          set -euo pipefail
+          # Not $GITHUB_SHA: for an annotated tag that can be the tag object.
+          # HEAD is the checked-out tag, so peel it to a commit.
+          commit="$(git rev-parse 'HEAD^{commit}')"
+          # fetch-depth: 0 already creates refs/remotes/origin/main; fetch it
+          # again so the check does not depend on that checkout detail.
+          git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::$commit is not an ancestor of origin/main - tag a commit that is on main"
+            exit 1
+          fi
+          echo "$commit is on main"
+
+  # The same two workflows every push to main runs, re-run on the tagged commit.
+  # Their artifacts belong to *this* run, so the release job below can just
+  # download them by name.
+  build:
+    needs: verify-tag
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+
+  test:
+    needs: verify-tag
+    uses: ./.github/workflows/test.yml
+    permissions:
+      contents: read
+
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    # The only job in the repo that can write to the repository.
+    permissions:
+      contents: write
+    steps:
+      # For .github/release-notes/<tag>.md - the jars come from the artifact.
+      - uses: actions/checkout@v4
+
+      - name: Download the bundle jars
+        uses: actions/download-artifact@v4
+        with:
+          name: plugin-jar
+          path: build
+
+      - name: Checksum the assets
+        run: |
+          set -euo pipefail
+          cd build
+          count="$(find . -maxdepth 1 -name 'io.github.lextpf.birt.chart.piecewiseconstant_*.jar' | wc -l)"
+          if [ "$count" -ne 2 ]; then
+            echo "::error::expected the bundle jar and the sources jar, found $count"
+            ls -l
+            exit 1
+          fi
+          sha256sum io.github.lextpf.birt.chart.piecewiseconstant_*.jar > SHA256SUMS
+          cat SHA256SUMS
+
+      # Third-party action, and this is the job that holds contents: write - so
+      # it is pinned to a full commit SHA, not a movable tag. Dependabot bumps it.
+      # fail_on_unmatched_files turns a glob that stops matching into a red job
+      # instead of a green job with an empty release.
+      - name: Publish the GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: |
+            build/io.github.lextpf.birt.chart.piecewiseconstant_*.jar
+            build/SHA256SUMS
+          fail_on_unmatched_files: true
+          # Hand-written body, one file per tag. GitHub prepends it to the
+          # generated notes.
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          generate_release_notes: true
