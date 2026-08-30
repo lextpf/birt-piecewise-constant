@@ -29,7 +29,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v6
         with:
@@ -74,7 +74,7 @@ jobs:
     env:
       BIRT_RUNTIME_URL: https://download.eclipse.org/birt/updates/release/4.24.0/downloads/birt-runtime-4.24.0-202606100854.zip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ~100 MB download, so keep it keyed on the exact URL it came from.
       - name: Cache the BIRT runtime distribution
