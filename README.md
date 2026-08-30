@@ -23,7 +23,7 @@
 <div align="center">
 <br>
 
-![Preview](./PREVIEW.png)
+<img src="PREVIEW.png" alt="Preview" width="800"/>
 
 </div>
 
@@ -52,48 +52,48 @@
 ```
 
 ```
-birt-piecewise-constant/                       # BIRT 4.24 chart-engine plug-in (Java 21, EPL-2.0)
-|-- src/                                       # Plug-in source; package io.github.lextpf.birt.chart.*
-|   |-- PiecewiseConstantSetup.java            # registerStandalone() for the standalone chart engine
-|   |-- model/                                 # Namespace to EPackage bridge, and the EMF model
-|   |   |-- PiecewiseConstantModelLoader.java  # IExtChartModelLoader behind the charttypes point
-|   |   +-- type/                              # EMF model: the series interface and StepMode
-|   |       |-- PiecewiseConstantSeries.java   # EMF interface; LineSeries subclass with StepMode
-|   |       |-- StepMode.java                  # After / Before / Center EMF Enumerator
-|   |       |-- PiecewiseConstantPackage.java  # EPackage: classifiers, features, literals
-|   |       |-- PiecewiseConstantFactory.java  # EMF factory interface
-|   |       +-- impl/                          # Hand-written EMF impls; create/createDefault
-|   +-- render/                                # Drawing path over the stock BIRT Line renderer
-|       |-- PiecewiseConstantLine.java         # Model renderer; adds corner vertices, then delegates
-|       |-- PiecewiseConstantExpander.java     # Expands data points into tread and step vertices
-|       +-- PiecewiseConstantExpansion.java    # Value object that holds the expanded vertices
-|-- test/                                      # JUnit 5 suite; mirrors the src package layout
-|   |-- model/                                 # Plug-in discovery and serializer round-trip tests
-|   |-- render/                                # Expander, geometry and render smoke tests
-|   |-- test/                                  # Fixtures, capturing PNG renderer, platform extension
-|   |-- RuntimeSmokeIT.java                    # End-to-end run on a real birt-runtime distribution
-|   |-- SampleReportTest.java                  # Runs piecewise-constant-sample.rptdesign
-|   |-- StandaloneFallbackTest.java            # registerStandalone() under PROP_STANDALONE
-|   +-- piecewise-constant-sample.rptdesign    # Runnable report with a scripted five-row data set
-|-- model/piecewise-constant.ecore             # EMF source of the type package
-|-- META-INF/MANIFEST.MF                       # OSGi bundle; Require-Bundle chart.engine [4.24,5.0)
-|-- plugin.xml                                 # modelrenderers, datasetprocessors, charttypes
-|-- about.html                                 # Eclipse about file shipped inside the bundle
-|-- build.properties                           # PDE bin.includes for the bundle contents
-|-- pom.xml                                    # Maven build; writes the OSGi-shaped jar to build/
-|-- setup.ps1                                  # Writes the git-ignored .env with the tool paths
-|-- toolchain.ps1                              # Shared tool resolution for the PowerShell scripts
-|-- build.ps1                                  # Builds the jar; build.ps1 install fills ~/.m2
-|-- test.ps1                                   # Runs the test suite and prints the results
-|-- .github/workflows/build.yml                # Reusable workflow: compile and package the jar
-|-- .github/workflows/test.yml                 # Reusable workflow: the JUnit 5 suite
-|-- .github/workflows/release.yml              # Tag trigger; calls build and test, then publishes
-|-- .github/release-notes/                     # Per-tag release note bodies
-|-- .github/dependabot.yml                     # GitHub Actions version bumps
-|-- CONTRIBUTING.md                            # Contribution standards for humans and AI agents
-|-- LICENSE.md                                 # Eclipse Public License 2.0
-|-- PREVIEW.png                                # The image at the top of this file
-+-- README.md                                  # Project overview (this file)
+birt-piecewise-constant/                     # BIRT 4.24 chart-engine plug-in (Java 21, EPL-2.0)
+|-- src/                                     # Plug-in source; package io.github.lextpf.birt.chart.*
+|   |-- PiecewiseConstantSetup               # registerStandalone() for the standalone chart engine
+|   |-- model/                               # Namespace to EPackage bridge, and the EMF model
+|   |   |-- PiecewiseConstantModelLoader     # IExtChartModelLoader behind the charttypes point
+|   |   +-- type/                            # EMF model: the series interface and StepMode
+|   |       |-- PiecewiseConstantSeries      # EMF interface; LineSeries subclass with StepMode
+|   |       |-- StepMode                     # After / Before / Center EMF Enumerator
+|   |       |-- PiecewiseConstantPackage     # EPackage: classifiers, features, literals
+|   |       |-- PiecewiseConstantFactory     # EMF factory interface
+|   |       +-- impl/                        # Hand-written EMF impls; create/createDefault
+|   +-- render/                              # Drawing path over the stock BIRT Line renderer
+|       |-- PiecewiseConstantLine            # Model renderer; adds corner vertices, then delegates
+|       |-- PiecewiseConstantExpander        # Expands data points into tread and step vertices
+|       +-- PiecewiseConstantExpansion       # Value object that holds the expanded vertices
+|-- test/                                    # JUnit 5 suite; mirrors the src package layout
+|   |-- model/                               # Plug-in discovery and serializer round-trip tests
+|   |-- render/                              # Expander, geometry and render smoke tests
+|   |-- test/                                # Fixtures, capturing PNG renderer, platform extension
+|   |-- RuntimeSmokeIT                       # End-to-end run on a real birt-runtime distribution
+|   |-- SampleReportTest                     # Runs piecewise-constant-sample.rptdesign
+|   |-- StandaloneFallbackTest               # registerStandalone() under PROP_STANDALONE
+|   +-- piecewise-constant-sample.rptdesign  # Runnable report with a scripted five-row data set
+|-- model/piecewise-constant.ecore           # EMF source of the type package
+|-- META-INF/MANIFEST.MF                     # OSGi bundle; Require-Bundle chart.engine [4.24,5.0)
+|-- plugin.xml                               # modelrenderers, datasetprocessors, charttypes
+|-- about.html                               # Eclipse about file shipped inside the bundle
+|-- build.properties                         # PDE bin.includes for the bundle contents
+|-- pom.xml                                  # Maven build; writes the OSGi-shaped jar to build/
+|-- setup.ps1                                # Writes the git-ignored .env with the tool paths
+|-- toolchain.ps1                            # Shared tool resolution for the PowerShell scripts
+|-- build.ps1                                # Builds the jar; build.ps1 install fills ~/.m2
+|-- test.ps1                                 # Runs the test suite and prints the results
+|-- .github/workflows/build.yml              # Reusable workflow: compile and package the jar
+|-- .github/workflows/test.yml               # Reusable workflow: the JUnit 5 suite
+|-- .github/workflows/release.yml            # Tag trigger; calls build and test, then publishes
+|-- .github/release-notes/                   # Per-tag release note bodies
+|-- .github/dependabot.yml                   # GitHub Actions version bumps
+|-- CONTRIBUTING.md                          # Contribution standards for humans and AI agents
+|-- LICENSE.md                               # Eclipse Public License 2.0
+|-- PREVIEW.png                              # The image at the top of this file
++-- README.md                                # Project overview (this file)
 ```
 
 ## Features
@@ -188,9 +188,7 @@ cd birt-piecewise-constant
 
 Output: `build/io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar`
 
-`.\build.ps1 install` puts the jar into `~/.m2`. On another platform, set `JAVA_HOME` to a JDK 21 and run `mvn -B -ntp -DskipTests clean package`. The jar is then in `build/` on that platform too.
-
-**Download.** [The latest release](https://github.com/lextpf/birt-piecewise-constant/releases/latest) carries `io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar`, the matching `-sources.jar` and a `SHA256SUMS` file for both. The jar carries `plugin.xml` and an OSGi `META-INF/MANIFEST.MF` at its root.
+**Download** [The latest release](https://github.com/lextpf/birt-piecewise-constant/releases/latest) of `io.github.lextpf.birt.chart.piecewiseconstant_1.0.0.jar`. The jar carries `plugin.xml` and an OSGi `META-INF/MANIFEST.MF` at its root.
 
 ## Installation
 
