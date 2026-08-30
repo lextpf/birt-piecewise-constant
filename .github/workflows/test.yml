@@ -1,0 +1,126 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # release.yml calls this file too, so a tag cannot ship a jar whose tests
+  # were never run on the tagged commit.
+  workflow_call:
+
+# See build.yml: the prefix is literal because ${{ github.workflow }} inside a
+# called workflow is the caller's name, which build.yml and test.yml share.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Not inherited from a caller - a called workflow gets its own env context.
+env:
+  MAVEN_OPTS: -Xmx1g
+
+jobs:
+  # The unit and render suite. RuntimeSmokeIT is skipped here (no
+  # -Dbirt.runtime.dir); it gets its own job below.
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # The render tests draw with Java2D through the logical SansSerif font,
+      # which needs a physical font installed on the runner.
+      - name: Install a physical font for Java2D
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+
+      # `test`, not `verify`: nothing in this job consumes the jar, and
+      # packaging is build.yml's job. Skipping package/install saves the
+      # jar + sources-jar round trip on every PR.
+      - name: Run the test suite
+        run: mvn -B -ntp test
+
+      # The rendered charts, so a reviewer can eyeball what the suite produced.
+      # This is the only place in the repo that uploads "test-renders":
+      # artifact names must be unique inside a run, and a release run contains
+      # the jobs of build.yml and test.yml together.
+      - name: Upload the rendered previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-renders
+          path: build/test-output/*.png
+          if-no-files-found: warn
+          retention-days: 30
+
+  # End-to-end proof against the real BIRT POJO runtime: RuntimeSmokeIT runs the
+  # sample report through the distribution's own ReportRunner.
+  # No `needs:` - it shares nothing with `test` and checks out and compiles its
+  # own tree, so the two run in parallel and the tests badge (and the release
+  # path) costs one job's wall clock instead of two.
+  runtime-smoke:
+    name: BIRT runtime smoke test
+    runs-on: ubuntu-latest
+    env:
+      BIRT_RUNTIME_URL: https://download.eclipse.org/birt/updates/release/4.24.0/downloads/birt-runtime-4.24.0-202606100854.zip
+    steps:
+      - uses: actions/checkout@v4
+
+      # ~100 MB download, so keep it keyed on the exact URL it came from.
+      - name: Cache the BIRT runtime distribution
+        id: birt-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/birt-runtime.zip
+          key: birt-runtime-${{ env.BIRT_RUNTIME_URL }}
+
+      - name: Download the BIRT runtime distribution
+        if: steps.birt-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL --retry 3 -o "$RUNNER_TEMP/birt-runtime.zip" "$BIRT_RUNTIME_URL"
+
+      # The zip carries ReportEngine/ at its top level; RuntimeSmokeIT expects
+      # <birt.runtime.dir>/ReportEngine/lib, so publish whichever level has it.
+      - name: Unpack the BIRT runtime distribution
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/birt-runtime"
+          rm -rf "$dest"
+          unzip -q "$RUNNER_TEMP/birt-runtime.zip" -d "$dest"
+          if [ ! -d "$dest/ReportEngine/lib" ]; then
+            nested="$(find "$dest" -maxdepth 2 -type d -name ReportEngine -print -quit)"
+            if [ -n "$nested" ]; then
+              dest="$(dirname "$nested")"
+            fi
+          fi
+          test -d "$dest/ReportEngine/lib" || {
+            echo "::error::no ReportEngine/lib under $dest - the distribution layout changed"
+            exit 1
+          }
+          echo "BIRT_RUNTIME_DIR=$dest" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Install a physical font for Java2D
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+
+      # `test` (not `verify`) is enough: the IT falls back to build/classes when
+      # the jar has not been packaged, and `test` always produces build/classes.
+      # No artifact upload here - "test-renders" is claimed by the job above.
+      - name: Run RuntimeSmokeIT
+        run: mvn -B -ntp -Dtest=RuntimeSmokeIT -Dbirt.runtime.dir="$BIRT_RUNTIME_DIR" test
