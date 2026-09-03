@@ -79,7 +79,7 @@ jobs:
       # ~100 MB download, so keep it keyed on the exact URL it came from.
       - name: Cache the BIRT runtime distribution
         id: birt-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/birt-runtime.zip
           key: birt-runtime-${{ env.BIRT_RUNTIME_URL }}
